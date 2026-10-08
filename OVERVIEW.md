@@ -229,6 +229,11 @@ Rate limit: tối đa 10 sự kiện mỗi giây trên một kết nối.
 - Theme: 3 bộ bàn/quân (gỗ, đá cẩm thạch, neon).
 - Hiệu năng: tự giảm DPR và tắt hậu kỳ trên máy yếu (`PerformanceMonitor`); tải Canvas theo kiểu lazy.
 
+### Ghi chú triển khai (Giai đoạn 1)
+- Quân mã dựng bằng `ExtrudeGeometry` từ hình nhìn ngang thay cho model glTF: không phụ thuộc file tải ngoài.
+- Ánh sáng môi trường dùng `Lightformer` của drei thay cho HDRI tải từ CDN; bóng đổ mềm từ directional light thay cho `ContactShadows`.
+- Ván với máy dùng đường dẫn `/game/ai?level=&color=`; thêm `/game/local` (hai người một máy). `/game/[id]` cho ván online ở Giai đoạn 2.
+
 ### Tách logic khỏi hiển thị
 - Store (Zustand) giữ trạng thái ván, độc lập với Three.js.
 - Bàn cờ hiển thị qua interface `BoardView`. Bản đầu là `Board3D`; có `Board2D` đơn giản làm dự phòng (máy không hỗ trợ WebGL) và để test E2E dễ hơn.

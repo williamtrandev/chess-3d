@@ -7,11 +7,23 @@
 | Mục | Giá trị |
 |---|---|
 | Giai đoạn | 1: Nền móng + chơi với máy |
-| Đang làm | Branch `chore/scaffold-monorepo`: scaffold + `chess-core` + ADR xong |
-| Tiếp theo | `packages/contracts` → `apps/web` (Next.js) → bàn cờ 3D |
+| Đang làm | Giai đoạn 1 xong phần code (branch `feat/web-play-vs-ai`, xếp chồng trên `chore/scaffold-monorepo`) |
+| Tiếp theo | Tạo repo GitHub, mở PR cho 2 branch, CI chạy lần đầu → bắt đầu Giai đoạn 2 |
 | Vướng mắc | Repo chưa có remote GitHub (chưa mở PR, CI chưa chạy). Mục 6–9 của `OVERVIEW.md` vẫn là bản nháp |
 
 ## Nhật ký
+
+### 2026-10-08 (phiên 2)
+- `packages/contracts`: schema Zod 4 cho envelope sự kiện, `game.started|finished|aborted`, `player.registered`, `rating.updated` (v1), registry theo type + version (`parseEvent`), tên topic + DLQ, payload Socket.IO hai chiều kèm type map cho Socket.IO. Enum lấy từ hằng số của `chess-core`.
+- `apps/web` (Next.js 16, React 19, Tailwind 4, R3F 9, drei 10, Zustand 5):
+  - Trang `/`, `/play/ai` (chọn cấp 1–8, màu quân), `/game/ai?level=&color=`, `/game/local` (hai người một máy).
+  - Store ván (Zustand vanilla) bọc `ChessGame`: chọn quân, đi bằng click hoặc kéo thả, phong cấp, đầu hàng, lật bàn.
+  - Bàn 3D: quân dựng bằng `LatheGeometry`; mã dựng bằng `ExtrudeGeometry` (không dùng glTF); bóng đổ mềm từ directional light; Lightformer thay HDRI tải ngoài; bloom; tự giảm DPR + tắt hậu kỳ qua `PerformanceMonitor`; camera tự xoay theo màu quân, góc nhìn từ trên; quân di chuyển theo đường cong, quân bị ăn bay khỏi bàn, rung khi chiếu hết.
+  - `Board2D` dự phòng (tự dùng khi không có WebGL), có `data-square` và nhãn truy cập cho E2E.
+  - Stockfish 19 lite single-threaded (≈1,8 MB, không cần COOP/COEP) trong Web Worker, copy vào `public/engine` khi `dev`/`build`.
+  - Âm thanh tổng hợp bằng Web Audio (không cần file); 3 theme (gỗ, cẩm thạch, neon); lưu cài đặt vào localStorage.
+- Đã kiểm tra trong trình duyệt: đi quân bằng click và kéo thả trên bàn 3D, máy đáp nước, phong cấp, chiếu hết + hộp kết quả, đổi theme, 2D/3D, nhìn từ trên.
+- Test: `chess-core` 46, `contracts` 8, `web` 23 (store, UCI, bàn cờ, nhãn, `Board2D`).
 
 ### 2026-10-08
 - Cân nhắc chuyển backend sang Go, quyết định giữ TypeScript (ghi trong ADR 0001).

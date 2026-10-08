@@ -13,11 +13,11 @@
 **Kết quả:** mở web, chơi cờ 3D với Stockfish.
 - [x] Scaffold monorepo: pnpm, Turborepo, tsconfig, eslint, prettier, Vitest
 - [x] `packages/chess-core`: bọc chess.js, đồng hồ, xác định kết quả ván + unit test
-- [ ] `packages/contracts`: khung schema Zod (socket, sự kiện, DTO)
-- [ ] `apps/web`: Next.js, layout, trang chủ
-- [ ] Bàn cờ 3D: quân cờ, bàn, camera, chọn/kéo thả, tô sáng, hiệu ứng di chuyển
-- [ ] Stockfish WASM trong Web Worker, 8 cấp độ
-- [ ] Âm thanh, theme, `Board2D` dự phòng
+- [x] `packages/contracts`: khung schema Zod (socket, sự kiện); DTO REST để Giai đoạn 2
+- [x] `apps/web`: Next.js, layout, trang chủ
+- [x] Bàn cờ 3D: quân cờ, bàn, camera, chọn/kéo thả, tô sáng, hiệu ứng di chuyển
+- [x] Stockfish WASM trong Web Worker, 8 cấp độ
+- [x] Âm thanh, theme, `Board2D` dự phòng
 - [x] CI tối thiểu: lint, typecheck, test (chưa chạy trên GitHub vì repo chưa có remote)
 
 ## Giai đoạn 2: Chơi online (≈ 2–3 tuần)
