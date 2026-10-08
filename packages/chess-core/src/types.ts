@@ -1,22 +1,27 @@
-export type Color = 'white' | 'black';
+export const COLORS = ['white', 'black'] as const;
+export type Color = (typeof COLORS)[number];
 
-export type PromotionPiece = 'q' | 'r' | 'b' | 'n';
+export const PROMOTION_PIECES = ['q', 'r', 'b', 'n'] as const;
+export type PromotionPiece = (typeof PROMOTION_PIECES)[number];
+
+export const END_REASONS = [
+  'checkmate',
+  'stalemate',
+  'insufficient_material',
+  'threefold_repetition',
+  'fifty_move_rule',
+  'timeout',
+  'timeout_vs_insufficient_material',
+  'resignation',
+  'draw_agreement',
+  'abandonment',
+  'aborted',
+] as const;
+export type EndReason = (typeof END_REASONS)[number];
 
 /** Standard PGN result notation. */
-export type GameResult = '1-0' | '0-1' | '1/2-1/2';
-
-export type EndReason =
-  | 'checkmate'
-  | 'stalemate'
-  | 'insufficient_material'
-  | 'threefold_repetition'
-  | 'fifty_move_rule'
-  | 'timeout'
-  | 'timeout_vs_insufficient_material'
-  | 'resignation'
-  | 'draw_agreement'
-  | 'abandonment'
-  | 'aborted';
+export const GAME_RESULTS = ['1-0', '0-1', '1/2-1/2'] as const;
+export type GameResult = (typeof GAME_RESULTS)[number];
 
 /**
  * Final state of a game. An aborted game has no result and is never rated.
