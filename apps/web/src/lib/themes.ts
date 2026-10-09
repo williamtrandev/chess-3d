@@ -1,4 +1,4 @@
-export const THEME_IDS = ['wood', 'marble', 'neon'] as const;
+export const THEME_IDS = ['wood', 'marble', 'neon', 'warriors'] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
 export interface PieceMaterial {
@@ -22,6 +22,8 @@ export interface Theme {
    * stays readable against any square, frame or scenery behind it.
    */
   outline: { white: string; black: string };
+  /** Draw chibi soldiers (with a rider for the knight) instead of chess pieces. */
+  figures?: boolean;
   /** Scene background color. */
   background: string;
   /** Strength of the bloom post-processing effect. */
@@ -35,9 +37,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     lightSquare: '#d8b98e',
     darkSquare: '#9c6d47',
     frame: '#5a3a22',
-    white: { color: '#fbf4e6', roughness: 0.45, metalness: 0.05 },
+    white: { color: '#f6ecda', roughness: 0.5, metalness: 0.05 },
     black: { color: '#2e1c10', roughness: 0.4, metalness: 0.05 },
-    outline: { white: '#2a1a0e', black: '#f6e7cc' },
+    outline: { white: '#140b05', black: '#f6e7cc' },
     background: '#1c1410',
     bloom: 0.25,
   },
@@ -47,9 +49,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     lightSquare: '#c9d1d9',
     darkSquare: '#66727e',
     frame: '#2c333a',
-    white: { color: '#fbfbfb', roughness: 0.15, metalness: 0.1 },
+    white: { color: '#eef0f3', roughness: 0.3, metalness: 0.1 },
     black: { color: '#1a1f25', roughness: 0.12, metalness: 0.2 },
-    outline: { white: '#1b2128', black: '#e9eef4' },
+    outline: { white: '#0d1116', black: '#e9eef4' },
     background: '#12161a',
     bloom: 0.3,
   },
@@ -76,5 +78,19 @@ export const THEMES: Record<ThemeId, Theme> = {
     outline: { white: '#02141a', black: '#1a0213' },
     background: '#04050c',
     bloom: 0.9,
+  },
+  warriors: {
+    id: 'warriors',
+    label: 'Chiến binh',
+    lightSquare: '#dccfae',
+    darkSquare: '#8a7350',
+    frame: '#4a3423',
+    // Swatch colours for the picker; the figures carry their own palettes.
+    white: { color: '#e3e8ef', roughness: 0.6, metalness: 0 },
+    black: { color: '#3b404c', roughness: 0.6, metalness: 0 },
+    outline: { white: '#140b05', black: '#f3e7cf' },
+    background: '#1c1410',
+    bloom: 0.25,
+    figures: true,
   },
 };

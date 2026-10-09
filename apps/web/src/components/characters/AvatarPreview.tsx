@@ -19,7 +19,7 @@ export default function AvatarPreview({
   return (
     <Canvas
       shadows
-      camera={{ position: [4.6, 4.4, -7.6], fov: 38 }}
+      camera={{ position: [4.6, 4.4, -7.6], fov: 32 }}
       aria-label="Xem trước nhân vật"
     >
       <ambientLight intensity={0.5} />

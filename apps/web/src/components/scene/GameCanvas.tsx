@@ -64,6 +64,10 @@ export default function GameCanvas({ theme, scenery, showBoard, interactive, lay
       frameloop="never"
       camera={{ fov: 50, near: 0.1, far: 3000, position: [0, 8, 14] }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
+      // Captured pieces are cut in two with per-material clipping planes.
+      onCreated={({ gl }) => {
+        gl.localClippingEnabled = true;
+      }}
       aria-label={showBoard ? 'Bàn cờ 3D' : 'Khung cảnh'}
     >
       <FrameLimiter fps={graphics.fps} />
@@ -182,13 +186,25 @@ function CameraRig({ preset, layout }: { preset: ViewPreset; layout: CanvasLayou
     camera.updateProjectionMatrix();
   });
 
+  // Let the player adjust the view around the preset, but never below the table, past
+  // straight overhead, or so close or far that the board leaves the screen.
+  useEffect(() => {
+    if (!controls) return;
+    const radius = preset.radius * framing.scale;
+    controls.minDistance = Math.min(9, radius * 0.8);
+    controls.maxDistance = Math.max(30, radius * 1.6);
+    controls.minPolarAngle = Math.min(0.15, preset.phi);
+    controls.maxPolarAngle = Math.max(1.3, preset.phi);
+  }, [controls, preset, framing.scale]);
+
+  const viewReset = useSettings((s) => s.viewReset);
   useEffect(() => {
     goal.current = new Spherical(
       preset.radius * framing.scale,
       preset.phi,
       (orientation === 'white' ? 0 : Math.PI) + preset.theta,
     );
-  }, [orientation, preset, framing.scale]);
+  }, [orientation, preset, framing.scale, viewReset]);
 
   useEffect(() => {
     if (!controls) return;

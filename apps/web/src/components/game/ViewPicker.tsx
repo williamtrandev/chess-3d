@@ -47,6 +47,7 @@ export function ViewPicker({ enabled }: { enabled: boolean }) {
             aria-pressed={view === id}
             disabled={!enabled}
             onClick={() => setView(id)}
+            title={view === id ? 'Bấm lại để đưa camera về góc này' : undefined}
             className={`flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2 text-[11px] font-medium transition duration-200 disabled:pointer-events-none disabled:opacity-35 ${
               view === id
                 ? 'bg-white text-slate-900 shadow'

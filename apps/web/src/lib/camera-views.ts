@@ -27,7 +27,16 @@ export interface ViewPreset {
 }
 
 export const VIEW_PRESETS: Record<CameraView, ViewPreset> = {
-  player: { radius: 16, phi: 1.1, theta: 0, lift: 0.16, autoRotate: false, ownAvatar: 'fade' },
+  // Diagonal from behind the player's right shoulder: the whole board stays readable and
+  // the files and ranks don't line up into a flat grid.
+  player: {
+    radius: 15,
+    phi: 0.92,
+    theta: 0.7,
+    lift: 0.12,
+    autoRotate: false,
+    ownAvatar: 'fade',
+  },
   shoulder: {
     radius: 12.5,
     phi: 1.16,
@@ -45,7 +54,7 @@ export const VIEW_PRESETS: Record<CameraView, ViewPreset> = {
     autoRotate: false,
     ownAvatar: 'show',
   },
-  top: { radius: 16, phi: 0.0001, theta: 0, lift: 0.02, autoRotate: false, ownAvatar: 'show' },
+  top: { radius: 12.5, phi: 0.0001, theta: 0, lift: 0.02, autoRotate: false, ownAvatar: 'show' },
   cinematic: { radius: 19, phi: 1.08, theta: 0.6, lift: 0.14, autoRotate: true, ownAvatar: 'show' },
 };
 

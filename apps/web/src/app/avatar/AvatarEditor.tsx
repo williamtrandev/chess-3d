@@ -395,13 +395,14 @@ export function AvatarEditor() {
             </p>
           </section>
 
-          <section className="glass flex min-h-[460px] flex-col overflow-hidden p-0">
+          {/* On phones the preview comes first and stays pinned while the form scrolls. */}
+          <section className="glass flex flex-col overflow-hidden p-0 max-lg:sticky max-lg:top-2 max-lg:z-10 max-lg:order-first max-lg:h-[42svh] max-lg:bg-slate-950/85 lg:min-h-[460px]">
             <div className="min-h-0 flex-1">
               <AvatarPreview avatar={draft} activity={activity} />
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-white/10 p-3">
-              <span className="truncate font-semibold">{draft.name || 'Bạn'}</span>
-              <div className="segmented">
+              <span className="truncate font-semibold max-sm:hidden">{draft.name || 'Bạn'}</span>
+              <div className="segmented max-sm:flex-1 [&>button]:whitespace-nowrap">
                 {PREVIEW_POSES.map((pose) => (
                   <button
                     key={pose.activity}

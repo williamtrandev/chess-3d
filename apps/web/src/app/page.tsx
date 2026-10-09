@@ -28,7 +28,7 @@ export default function HomePage() {
     <main className="relative min-h-svh overflow-hidden">
       <SceneBackdrop />
       <div className="relative z-10 mx-auto flex min-h-svh max-w-7xl flex-col justify-between px-6 py-6 sm:px-10 sm:py-8">
-        <header className="flex items-center justify-between">
+        <header className="flex items-center justify-between gap-3">
           <span className="text-lg font-extrabold tracking-tight drop-shadow">
             chess<span className="text-amber-300">3d</span>
           </span>

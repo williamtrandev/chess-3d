@@ -1,5 +1,6 @@
 import {
   Box3,
+  Color,
   BoxGeometry,
   CircleGeometry,
   Euler,
@@ -43,5 +44,16 @@ describe('bake', () => {
     const merged = bake([{ geometry: disc, matrix: place([0, 0, 0], new Euler(0, Math.PI, 0)) }]);
     const normal = new Vector3().fromBufferAttribute(merged.getAttribute('normal'), 0);
     expect(normal.z).toBeCloseTo(-1);
+  });
+
+  it('paints each part with its vertex colour, white for parts without one', () => {
+    const red = new Color(1, 0, 0);
+    const merged = bake([
+      { geometry: new BoxGeometry(1, 1, 1), matrix: place([0, 0, 0]), color: red },
+      { geometry: new BoxGeometry(1, 1, 1), matrix: place([3, 0, 0]) },
+    ]);
+    const colors = merged.getAttribute('color');
+    expect([colors.getX(0), colors.getY(0), colors.getZ(0)]).toEqual([1, 0, 0]);
+    expect(colors.getY(colors.count - 1)).toBe(1);
   });
 });

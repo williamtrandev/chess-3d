@@ -95,15 +95,19 @@ const LIGHTING: Record<Outdoor, Lighting> = {
   },
 };
 
-/** Bloom settings per scene: night scenes let lanterns and fireflies glow. */
+/**
+ * Bloom settings per scene: night scenes let lanterns and fireflies glow. In daylight the
+ * threshold sits above sunlit surfaces, so only emissive things glow: a lower one made the
+ * white pieces haze over and smear their outlines.
+ */
 export const SCENE_BLOOM: Record<SceneryId, { threshold: number; intensity: number }> = {
-  field: { threshold: 0.95, intensity: 0.5 },
-  sunset: { threshold: 0.9, intensity: 0.6 },
-  beach: { threshold: 0.95, intensity: 0.5 },
-  snow: { threshold: 0.97, intensity: 0.4 },
+  field: { threshold: 1.3, intensity: 0.5 },
+  sunset: { threshold: 1.25, intensity: 0.6 },
+  beach: { threshold: 1.3, intensity: 0.5 },
+  snow: { threshold: 1.3, intensity: 0.4 },
   night: { threshold: 0.55, intensity: 1.2 },
-  sakura: { threshold: 0.95, intensity: 0.5 },
-  studio: { threshold: 0.75, intensity: 1 },
+  sakura: { threshold: 1.3, intensity: 0.5 },
+  studio: { threshold: 1.1, intensity: 1 },
 };
 
 /** Sun light that casts soft shadows around the table and the players. */

@@ -10,14 +10,11 @@ import {
   Color,
   CylinderGeometry,
   Euler,
-  DataTexture,
   LatheGeometry,
   Matrix4,
   MeshStandardMaterial,
   MeshToonMaterial,
-  NearestFilter,
   Quaternion,
-  RGBAFormat,
   SRGBColorSpace,
   Shape,
   ShapeGeometry,
@@ -32,6 +29,7 @@ import {
 } from 'three';
 import { BUILD_WIDTH, type Avatar } from '@/lib/avatar';
 import { bake, place, type Placed } from '@/lib/bake';
+import { toonRamp } from '@/lib/toon';
 import type { OwnAvatarMode } from '@/lib/camera-views';
 import { seededRandom } from '@/lib/scenery';
 import { segmentRotation, solveTwoBone } from '@/lib/rig';
@@ -99,23 +97,6 @@ const segment = (capsule: BufferGeometry, from: Vector3, to: Vector3): Placed =>
   geometry: capsule,
   matrix: place(from.clone().add(to).multiplyScalar(0.5), segmentRotation(from, to)),
 });
-
-// Three-band ramp shared by every toon material.
-let ramp: DataTexture | null = null;
-const toonRamp = () => {
-  if (!ramp) {
-    ramp = new DataTexture(
-      new Uint8Array([175, 175, 175, 255, 225, 225, 225, 255, 255, 255, 255, 255]),
-      3,
-      1,
-      RGBAFormat,
-    );
-    ramp.minFilter = NearestFilter;
-    ramp.magFilter = NearestFilter;
-    ramp.needsUpdate = true;
-  }
-  return ramp;
-};
 
 /** A point on the face (x, y on the front of the head) with -Z pointing out of the skin. */
 const onFace = (x: number, y: number, lift = 0) => {

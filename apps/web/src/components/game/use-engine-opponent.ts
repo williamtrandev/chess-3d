@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { engineSettings } from '@/lib/ai-levels';
+import { ATTACK_WALL_TIME } from '@/lib/capture-fx';
 import { StockfishEngine } from '@/lib/engine';
 import type { GameStoreApi } from '@/lib/game-store';
+import { useSettings } from '@/lib/settings-store';
 
 /** Plays the engine's moves whenever it is its turn. Returns whether the engine is thinking. */
 export const useEngineOpponent = (store: GameStoreApi): boolean => {
@@ -31,8 +33,13 @@ export const useEngineOpponent = (store: GameStoreApi): boolean => {
           settings,
         )
         .then(async (uci) => {
-          // Keep very fast replies from feeling instantaneous.
-          const wait = 350 - (performance.now() - started);
+          // Keep very fast replies from feeling instantaneous, and let a cinematic
+          // capture finish before the engine answers it.
+          const { captureFx, view } = useSettings.getState();
+          const capture =
+            state.moves.at(-1)?.captured && captureFx === 'cinematic' && view === '3d';
+          const minimum = capture ? ATTACK_WALL_TIME * 1000 + 250 : 350;
+          const wait = minimum - (performance.now() - started);
           if (wait > 0) await new Promise((r) => setTimeout(r, wait));
           if (disposed) return;
           const now = store.getState();

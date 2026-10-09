@@ -21,17 +21,18 @@ export const TABLE_WOOD: Record<SceneryId, string> = {
 };
 
 /**
- * How strongly the sky's reflections light the pieces. Bright, white-ground scenes wash
- * light pieces out to flat white, so they get less.
+ * How strongly the sky's reflections light the pieces. The sky map is the main light on
+ * them: at full strength light pieces wash out to flat white and lose both their shading
+ * and their outline, so daylight scenes keep it low.
  */
 export const PIECE_REFLECTION: Record<SceneryId, number> = {
-  field: 0.85,
-  sunset: 0.9,
-  beach: 0.45,
-  snow: 0.45,
-  night: 1,
-  sakura: 0.75,
-  studio: 1,
+  field: 0.3,
+  sunset: 0.35,
+  beach: 0.25,
+  snow: 0.4,
+  night: 0.8,
+  sakura: 0.25,
+  studio: 0.6,
 };
 
 export const SCENERY_LABEL: Record<SceneryId, string> = {

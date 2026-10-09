@@ -1,11 +1,13 @@
 'use client';
 
-import { OrbitControls, Outlines } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   Euler,
   MeshStandardMaterial,
+  MeshToonMaterial,
+  Quaternion,
   PlaneGeometry,
   Vector3,
   type BufferGeometry,
@@ -17,20 +19,40 @@ import {
   isLightSquare,
   pieceAt,
   piecesFromFen,
-  squareCoords,
   type BoardPiece,
+  type PieceType,
 } from '@/lib/board';
 import type { Theme, PieceMaterial } from '@/lib/themes';
 import { useGame, useGameStoreApi } from '../game/game-context';
 import { bake, place } from '@/lib/bake';
+import {
+  APPROACH,
+  ATTACK_TIME,
+  SETTLE,
+  STRIKE,
+  attackDirection,
+  attackPose,
+  effectSpeed,
+} from '@/lib/capture-fx';
+import { useSettings } from '@/lib/settings-store';
+import { toonRamp } from '@/lib/toon';
 import { squareToVector, vectorToSquare } from '@/lib/board-space';
 import { useBoardState } from './board-state';
 import { createPieceGeometries } from './piece-geometry';
+import { SlicedPiece } from './CaptureFx';
+import { PieceOutline } from './PieceOutline';
+import { figureFor, figureRestYaw, figureYawTowards, type Figure } from './figures';
+import { knightRotation } from './piece-orientation';
 
 const MOVE_DURATION = 0.32;
 const CAPTURE_DURATION = 0.8;
+const UP = new Vector3(0, 1, 0);
 /** Width of the contrasting silhouette around pieces, in drawing-buffer pixels. */
-const PIECE_OUTLINE = 2;
+/**
+ * Outline width in world units, so it scales with the piece on screen: a fixed pixel
+ * width swamped small, distant pieces (top view, phones).
+ */
+const PIECE_OUTLINE = 0.016;
 
 const toMaterial = (m: PieceMaterial, reflection: number) =>
   new MeshStandardMaterial({
@@ -92,25 +114,62 @@ export function ChessBoard3D({
     () => () => Object.values(squareGeometry).forEach((g) => g.dispose()),
     [squareGeometry],
   );
-  const materials = useMemo(
-    () => ({
+  const figures = theme.figures === true;
+  const materials = useMemo(() => {
+    if (figures) {
+      // Figures carry their colours per vertex, so both sides share one toon material.
+      const toon = new MeshToonMaterial({ vertexColors: true, gradientMap: toonRamp() });
+      return { white: toon, black: toon };
+    }
+    return {
       white: toMaterial(theme.white, reflection),
       black: toMaterial(theme.black, reflection),
-    }),
-    [theme, reflection],
-  );
+    };
+  }, [theme, reflection, figures]);
+  /** Rest turn of a piece: figures face the opponent, knights look towards the centre. */
+  const restYaw = (piece: BoardPiece) =>
+    figures ? figureRestYaw(piece.color) : piece.type === 'n' ? knightRotation(piece) : 0;
+  const figureOf = (piece: BoardPiece) => (figures ? figureFor(piece.type, piece.color) : null);
   useEffect(() => {
     return () => Object.values(geometries).forEach((g) => g.dispose());
   }, [geometries]);
   useEffect(() => {
-    return () => Object.values(materials).forEach((m) => m.dispose());
+    return () => new Set(Object.values(materials)).forEach((m) => m.dispose());
   }, [materials]);
+  // three.js only honours envMapIntensity for a material's own envMap (scene.environment
+  // uses scene.environmentIntensity), so point the pieces at the sky's map explicitly.
+  useFrame(({ scene }) => {
+    for (const material of Object.values(materials)) {
+      if (!(material instanceof MeshStandardMaterial)) continue;
+      if (material.envMap !== scene.environment) {
+        material.envMap = scene.environment;
+        material.needsUpdate = true;
+      }
+    }
+  });
 
   const drag = useRef<DragState | null>(null);
   const [dragging, setDragging] = useState(false);
   const wasSelected = useRef(false);
 
   const ply = moves.length;
+  // Cinematic capture: who strikes, from where, and in which direction.
+  const cinematic = useSettings((s) => s.captureFx === 'cinematic');
+  const attack = useMemo(() => {
+    const last = moves.at(-1);
+    if (!cinematic || !last?.captured) return null;
+    const mover = pieceAt(piecesFromFen(last.fenAfter), last.to);
+    if (!mover) return null;
+    return {
+      square: last.to,
+      // A promoting pawn strikes as a pawn.
+      type: last.promotion ? ('p' as const) : mover.type,
+      direction: attackDirection(squareToVector(last.from), squareToVector(last.to)),
+    };
+  }, [moves, cinematic]);
+  const onImpact = (amount: number) => {
+    shake.current = Math.max(shake.current, amount);
+  };
   const animation = useMemo(() => moveAnimation(moves.at(-1)), [moves]);
   const captured = useMemo(() => {
     const last = moves.at(-1);
@@ -178,6 +237,8 @@ export function ChessBoard3D({
 
   return (
     <>
+      {/* The player can adjust the view (limits are set per view by the camera rig); no
+          panning, so the board stays centred. */}
       <OrbitControls
         makeDefault
         enabled={!dragging}
@@ -186,10 +247,8 @@ export function ChessBoard3D({
         enablePan={false}
         enableDamping
         dampingFactor={0.08}
-        rotateSpeed={0.6}
-        minDistance={5}
-        maxDistance={34}
-        maxPolarAngle={1.4}
+        rotateSpeed={0.5}
+        zoomSpeed={0.6}
         autoRotate={!interactive || autoRotate}
         autoRotateSpeed={interactive ? 0.5 : 0.35}
       />
@@ -238,7 +297,10 @@ export function ChessBoard3D({
               key={from ? `${piece.square}@${ply}` : piece.square}
               piece={piece}
               from={from}
-              geometry={geometries[piece.type]}
+              attack={attack?.square === piece.square ? attack.type : null}
+              geometry={figureOf(piece)?.body ?? geometries[piece.type]}
+              figure={figureOf(piece)}
+              restYaw={restYaw(piece)}
               material={materials[piece.color]}
               outline={theme.outline[piece.color]}
               lifted={piece.square === selected}
@@ -249,11 +311,26 @@ export function ChessBoard3D({
           );
         })}
 
-        {captured && (
+        {captured && attack && (
+          <SlicedPiece
+            key={`sliced@${ply}`}
+            piece={captured}
+            geometry={figureOf(captured)?.whole ?? geometries[captured.type]}
+            yaw={restYaw(captured)}
+            material={materials[captured.color]}
+            outline={theme.outline[captured.color]}
+            outlineWidth={PIECE_OUTLINE}
+            attacker={attack.type}
+            direction={attack.direction}
+            onImpact={onImpact}
+          />
+        )}
+        {captured && !attack && (
           <CapturedPiece
             key={`captured@${ply}`}
             piece={captured}
-            geometry={geometries[captured.type]}
+            yaw={restYaw(captured)}
+            geometry={figureOf(captured)?.whole ?? geometries[captured.type]}
             material={materials[captured.color]}
             outline={theme.outline[captured.color]}
           />
@@ -296,23 +373,17 @@ const moveAnimation = (
   return sources;
 };
 
-/**
- * Knights look towards the centre files and slightly towards the opponent, so their
- * silhouette stays readable from the player's seat. The head's muzzle points to +X.
- */
-const knightRotation = (piece: BoardPiece): number => {
-  const towardsRight = squareCoords(piece.square).file < 4;
-  const tilt = Math.PI / 6;
-  if (piece.color === 'white') return towardsRight ? tilt : Math.PI - tilt;
-  return towardsRight ? -tilt : Math.PI + tilt;
-};
-
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
 interface PieceProps {
   piece: BoardPiece;
   from: string | undefined;
+  /** Strike style when this piece just captured with the cinematic effect. */
+  attack: PieceType | null;
   geometry: BufferGeometry;
+  /** The soldier figure drawn instead of a chess piece, with its weapon arm. */
+  figure: Figure | null;
+  restYaw: number;
   material: Material;
   outline: string;
   lifted: boolean;
@@ -324,7 +395,10 @@ interface PieceProps {
 function Piece({
   piece,
   from,
+  attack,
   geometry,
+  figure,
+  restYaw,
   material,
   outline,
   lifted,
@@ -332,10 +406,11 @@ function Piece({
   interactive,
   onPointerDown,
 }: PieceProps) {
+  const arm = useRef<Group>(null);
   const ref = useRef<Group>(null);
   const target = useMemo(() => squareToVector(piece.square), [piece.square]);
   const start = useMemo(() => (from ? squareToVector(from) : null), [from]);
-  const elapsed = useRef(start ? 0 : MOVE_DURATION);
+  const elapsed = useRef(0);
   const setCursor = (value: string) => {
     if (interactive) document.body.style.cursor = value;
   };
@@ -348,7 +423,31 @@ function Piece({
       group.position.lerp(new Vector3(dragged.point.x, 0.35, dragged.point.z), 0.5);
       return;
     }
-    if (start && elapsed.current < MOVE_DURATION) {
+    if (start && attack && elapsed.current < ATTACK_TIME) {
+      const time = elapsed.current;
+      elapsed.current = Math.min(ATTACK_TIME, time + delta * effectSpeed(time));
+      const pose = attackPose(attack, elapsed.current, start, target);
+      group.position.copy(pose.position);
+      const dir = attackDirection(start, target);
+      // Figures and knights turn to charge at the target, then settle back.
+      const charge = figure
+        ? figureYawTowards(dir)
+        : piece.type === 'n'
+          ? Math.atan2(-dir.z, dir.x)
+          : restYaw;
+      if (arm.current) arm.current.rotation.x = weaponSwing(elapsed.current);
+      const back = Math.max(0, (elapsed.current - (ATTACK_TIME - SETTLE)) / SETTLE);
+      const yaw = charge + (restYaw - charge) * back + pose.spin;
+      group.quaternion
+        .setFromAxisAngle(new Vector3().crossVectors(UP, dir).normalize(), pose.pitch)
+        .multiply(new Quaternion().setFromAxisAngle(UP, yaw));
+      if (elapsed.current >= ATTACK_TIME) {
+        group.quaternion.setFromAxisAngle(UP, restYaw);
+        if (arm.current) arm.current.rotation.x = 0;
+      }
+      return;
+    }
+    if (start && !attack && elapsed.current < MOVE_DURATION) {
       elapsed.current = Math.min(MOVE_DURATION, elapsed.current + delta);
       const t = easeInOut(elapsed.current / MOVE_DURATION);
       group.position.lerpVectors(start, target, t);
@@ -363,26 +462,50 @@ function Piece({
     <group
       ref={ref}
       position={start ?? target}
-      rotation-y={piece.type === 'n' ? knightRotation(piece) : 0}
+      rotation-y={restYaw}
       onPointerDown={(e) => onPointerDown(e, piece)}
       onPointerOver={() => setCursor('grab')}
       onPointerOut={() => setCursor('auto')}
     >
       <mesh geometry={geometry} material={material} castShadow receiveShadow>
-        <Outlines thickness={PIECE_OUTLINE} color={outline} />
+        <PieceOutline geometry={geometry} color={outline} thickness={PIECE_OUTLINE} />
       </mesh>
+      {figure && (
+        // The weapon arm swings around the shoulder when the figure strikes.
+        <group ref={arm} position={figure.pivot}>
+          <mesh
+            geometry={figure.weapon}
+            material={material}
+            position={figure.pivot.clone().negate()}
+            castShadow
+          >
+            <PieceOutline geometry={figure.weapon} color={outline} thickness={PIECE_OUTLINE} />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }
 
+/** Weapon arm angle during an attack: raised back on the approach, slashed down on the strike. */
+const weaponSwing = (time: number): number => {
+  const windup = APPROACH - 0.28;
+  if (time < windup) return 0;
+  if (time < APPROACH) return 1.3 * easeInOut((time - windup) / 0.28);
+  if (time < APPROACH + STRIKE) return 1.3 - 2.9 * easeInOut((time - APPROACH) / STRIKE);
+  return -1.6 * (1 - easeInOut(Math.min(1, (time - APPROACH - STRIKE) / SETTLE)));
+};
+
 /** A captured piece flies up and off the board, shrinking as it goes. */
 function CapturedPiece({
   piece,
+  yaw,
   geometry,
   material,
   outline,
 }: {
   piece: BoardPiece;
+  yaw: number;
   geometry: BufferGeometry;
   material: Material;
   outline: string;
@@ -408,9 +531,9 @@ function CapturedPiece({
   });
 
   return (
-    <group ref={ref} position={origin}>
+    <group ref={ref} position={origin} rotation-y={yaw}>
       <mesh geometry={geometry} material={material} castShadow>
-        <Outlines thickness={PIECE_OUTLINE} color={outline} />
+        <PieceOutline geometry={geometry} color={outline} thickness={PIECE_OUTLINE} />
       </mesh>
     </group>
   );

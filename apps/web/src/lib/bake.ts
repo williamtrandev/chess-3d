@@ -1,4 +1,12 @@
-import { Euler, Matrix4, Quaternion, Vector3, type BufferGeometry } from 'three';
+import {
+  BufferAttribute,
+  Euler,
+  Matrix4,
+  Quaternion,
+  Vector3,
+  type BufferGeometry,
+  type Color,
+} from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 type Vec = Vector3 | [number, number, number];
@@ -7,6 +15,8 @@ type Vec = Vector3 | [number, number, number];
 export interface Placed {
   geometry: BufferGeometry;
   matrix: Matrix4;
+  /** Vertex colour for this part; parts without one are white when others have one. */
+  color?: Color;
 }
 
 const toVector = (v: Vec) => (Array.isArray(v) ? new Vector3(...v) : v);
@@ -30,7 +40,8 @@ export const place = (
  * call (and cast a single shadow) instead of one each. The inputs are left untouched.
  */
 export const bake = (parts: Placed[]): BufferGeometry => {
-  const prepared = parts.map(({ geometry, matrix }) => {
+  const colored = parts.some((part) => part.color);
+  const prepared = parts.map(({ geometry, matrix, color }) => {
     // Mixed indexed and non-indexed inputs cannot be merged, so flatten them all.
     const copy = geometry.index ? geometry.toNonIndexed() : geometry.clone();
     for (const name of Object.keys(copy.attributes)) {
@@ -38,6 +49,16 @@ export const bake = (parts: Placed[]): BufferGeometry => {
     }
     copy.morphAttributes = {};
     copy.clearGroups();
+    if (colored) {
+      const count = copy.getAttribute('position').count;
+      const rgb = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        rgb[i * 3] = color?.r ?? 1;
+        rgb[i * 3 + 1] = color?.g ?? 1;
+        rgb[i * 3 + 2] = color?.b ?? 1;
+      }
+      copy.setAttribute('color', new BufferAttribute(rgb, 3));
+    }
     return copy.applyMatrix4(matrix);
   });
   const merged = mergeGeometries(prepared);

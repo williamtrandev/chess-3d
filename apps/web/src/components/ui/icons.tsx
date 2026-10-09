@@ -54,6 +54,19 @@ export const PanelIcon = ({ open, ...p }: SVGProps<SVGSVGElement> & { open?: boo
   </svg>
 );
 
+export const CameraIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </svg>
+);
+
+export const MenuIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </svg>
+);
+
 export const SoundIcon = ({ muted, ...p }: SVGProps<SVGSVGElement> & { muted?: boolean }) => (
   <svg {...base(p)}>
     <path d="M11 5 6 9H2v6h4l5 4V5Z" />

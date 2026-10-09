@@ -20,6 +20,8 @@ export function SettingsPanel({ webgl }: { webgl: boolean }) {
       toggleSound: st.toggleSound,
       graphics: st.graphics,
       setGraphics: st.setGraphics,
+      captureFx: st.captureFx,
+      setCaptureFx: st.setCaptureFx,
     })),
   );
   const level = useGraphicsLevel();
@@ -50,7 +52,7 @@ export function SettingsPanel({ webgl }: { webgl: boolean }) {
       </div>
       <div>
         <p className="label mb-2">Bộ quân</p>
-        <div className="segmented">
+        <div className="segmented grid grid-cols-2 gap-1">
           {THEME_IDS.map((id) => (
             <button
               key={id}
@@ -71,6 +73,27 @@ export function SettingsPanel({ webgl }: { webgl: boolean }) {
                 </span>
                 {THEMES[id].label}
               </span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="label mb-2">Ăn quân</p>
+        <div className="segmented">
+          {(
+            [
+              ['cinematic', 'Điện ảnh'],
+              ['simple', 'Nhanh'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={s.captureFx === value}
+              onClick={() => s.setCaptureFx(value)}
+              disabled={!webgl}
+            >
+              {label}
             </button>
           ))}
         </div>

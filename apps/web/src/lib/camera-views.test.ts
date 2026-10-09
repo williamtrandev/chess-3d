@@ -23,4 +23,11 @@ describe('camera views', () => {
   it('hides the player’s own character in the first-person seat view', () => {
     expect(VIEW_PRESETS.seat.ownAvatar).toBe('hide');
   });
+
+  it('opens the game on a raised diagonal view', () => {
+    const { theta, phi } = VIEW_PRESETS.player;
+    expect(theta).toBeGreaterThan(0.4);
+    expect(theta).toBeLessThan(1.2);
+    expect(phi).toBeLessThan(1.1);
+  });
 });
