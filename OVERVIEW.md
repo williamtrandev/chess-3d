@@ -233,6 +233,8 @@ Rate limit: tối đa 10 sự kiện mỗi giây trên một kết nối.
 - Quân mã dựng bằng `ExtrudeGeometry` từ hình nhìn ngang thay cho model glTF: không phụ thuộc file tải ngoài.
 - Ánh sáng môi trường dùng `Lightformer` của drei thay cho HDRI tải từ CDN; bóng đổ mềm từ directional light thay cho `ContactShadows`.
 - Ván với máy dùng đường dẫn `/game/ai?level=&color=`; thêm `/game/local` (hai người một máy). `/game/[id]` cho ván online ở Giai đoạn 2.
+- Bàn cờ đặt giữa khung cảnh 3D chọn được: **Đồng quê**, **Bãi biển**, **Phòng tối**. Canvas phủ toàn màn hình, panel kính mờ nổi phía trên; trang chủ cũng dùng khung cảnh làm nền. Mọi thứ dựng bằng code/shader, không tải asset ngoài.
+- Chất lượng đồ họa tự hạ khi FPS giảm (ít cỏ hơn, tắt hậu kỳ, giảm DPR).
 
 ### Tách logic khỏi hiển thị
 - Store (Zustand) giữ trạng thái ván, độc lập với Three.js.

@@ -7,11 +7,26 @@
 | Mục | Giá trị |
 |---|---|
 | Giai đoạn | 1: Nền móng + chơi với máy |
-| Đang làm | Giai đoạn 1 xong phần code (branch `feat/web-play-vs-ai`, xếp chồng trên `chore/scaffold-monorepo`) |
+| Đang làm | Giai đoạn 1 xong phần code; giao diện toàn cảnh + khung cảnh 3D (branch `feat/web-scenery`, xếp chồng trên `feat/web-play-vs-ai` → `chore/scaffold-monorepo`) |
 | Tiếp theo | Tạo repo GitHub, mở PR cho 2 branch, CI chạy lần đầu → bắt đầu Giai đoạn 2 |
 | Vướng mắc | Repo chưa có remote GitHub (chưa mở PR, CI chưa chạy). Mục 6–9 của `OVERVIEW.md` vẫn là bản nháp |
 
 ## Nhật ký
+
+### 2026-10-09
+- Giao diện mới: canvas 3D phủ toàn màn hình, panel kính mờ (glassmorphism) nổi bên phải; mobile: khung cảnh phía trên, panel cuộn bên dưới. Font Be Vietnam Pro.
+- Khung cảnh 3D chọn được (lưu trong cài đặt):
+  - Đồng quê: đồi thoai thoải, ~60.000 ngọn cỏ đung đưa theo gió (InstancedMesh + shader), hoa, cây low-poly, bướm, chim, mây trôi.
+  - Bãi biển: đảo cát, mặt nước bằng shader (sóng, bọt ven bờ, lấp lánh), hàng dừa lắc lư, đá, dù che nắng, mòng biển, mây.
+  - Phòng tối: như cũ, cho máy yếu.
+  - Trời bằng `Sky` của drei; phản chiếu trên quân lấy từ chính bầu trời; sương mù theo khung cảnh; bàn cờ đặt trên bàn gỗ.
+- Camera đóng khung bàn cờ vào phần màn hình trống cạnh panel (`setViewOffset`), thấy được chân trời; tự lùi xa trên màn hẹp.
+- Tự giảm chất lượng (ít cỏ, tắt bloom, DPR 1) khi `PerformanceMonitor` thấy FPS giảm.
+- Panel người chơi hiện quân đã ăn và chênh lệch quân; danh sách nước đi tô nước cuối; đầu hàng có bước xác nhận; hộp kết quả có confetti khi thắng; thanh cài đặt dạng segmented.
+- Trang chủ và trang chọn cấp độ dùng khung cảnh 3D làm nền (bàn cờ tự xoay chậm).
+- Cài đặt nạp từ localStorage sau khi mount (`skipHydration`) để tránh lệch hydration.
+- Rule `react-hooks/immutability` tắt riêng cho thư mục 3D (R3F thay đổi object three.js trong vòng lặp frame theo thiết kế).
+- Đã kiểm tra trong trình duyệt: 1100×700, 375×812; khung cảnh đồng quê, bãi biển; bàn 2D trên khung cảnh; ~120 FPS trên máy dev; console không lỗi.
 
 ### 2026-10-08 (phiên 2)
 - `packages/contracts`: schema Zod 4 cho envelope sự kiện, `game.started|finished|aborted`, `player.registered`, `rating.updated` (v1), registry theo type + version (`parseEvent`), tên topic + DLQ, payload Socket.IO hai chiều kèm type map cho Socket.IO. Enum lấy từ hằng số của `chess-core`.
