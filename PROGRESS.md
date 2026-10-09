@@ -7,11 +7,20 @@
 | Mục | Giá trị |
 |---|---|
 | Giai đoạn | 1: Nền móng + chơi với máy |
-| Đang làm | Giai đoạn 1 xong phần code; giao diện toàn cảnh + khung cảnh 3D (branch `feat/web-scenery`, xếp chồng trên `feat/web-play-vs-ai` → `chore/scaffold-monorepo`) |
+| Đang làm | Người chơi 3D, nhân vật từ ảnh, góc camera, 7 khung cảnh (branch `feat/players-and-avatars`, xếp chồng trên `feat/web-scenery` → `feat/web-play-vs-ai` → `chore/scaffold-monorepo`) |
 | Tiếp theo | Tạo repo GitHub, mở PR cho 2 branch, CI chạy lần đầu → bắt đầu Giai đoạn 2 |
 | Vướng mắc | Repo chưa có remote GitHub (chưa mở PR, CI chưa chạy). Mục 6–9 của `OVERVIEW.md` vẫn là bản nháp |
 
 ## Nhật ký
+
+### 2026-10-09 (phiên 2)
+- 6 góc camera: Mặc định, Qua vai, Góc ngồi (ngôi thứ nhất), Cạnh bàn, Trên cao, Điện ảnh (tự lượn); phím V để đổi; lưu trong cài đặt.
+- Hai nhân vật 3D ngồi ghế hai bên bàn (dựng bằng code, phong cách chibi): thở, quay đầu nhìn nước vừa đi, với tay khi đi quân (IK hai khớp), chống cằm khi tới lượt, ăn mừng khi thắng, cúi đầu khi thua. Stockfish là robot có kính phát sáng. Nhân vật đứng giữa camera và bàn cờ tự mờ (hoặc ẩn ở góc ngồi).
+- Hạ mặt đất xuống `GROUND_Y = -5.6` để nhân vật phóng 1.8 lần ngồi vừa ghế, tay đặt đúng mép bàn.
+- Trang `/avatar`: tải ảnh toàn thân → MediaPipe Pose (WASM, chạy trong trình duyệt) tìm 33 điểm khớp + mặt nạ người → lấy màu da, tóc, áo, quần, giày (median theo vùng), đoán kiểu tóc, dáng người, cắt khuôn mặt có viền mờ dán lên đầu nhân vật. Chỉnh màu, kiểu tóc, dáng tay; xem trước 3D xoay được với 4 tư thế. Ảnh không rời khỏi máy; chỉ lưu màu và ảnh mặt nhỏ trong localStorage. Model pose tải từ kho chính thức của Google khi dùng lần đầu.
+- Thêm 4 khung cảnh: Hoàng hôn, Núi tuyết (núi, thông phủ tuyết, tuyết rơi), Đêm lồng đèn (sao, trăng, lồng đèn có đèn điểm, đom đóm), Vườn anh đào (cây anh đào, cánh hoa rơi, sỏi cào, đèn đá, cổng torii, ao). Tổng 7 khung cảnh.
+- Lỗi tìm được khi kiểm tra: đổi `transparent` của material lúc chạy không biên dịch lại shader (three.js ép alpha = 1 cho material đục) nên nhân vật không mờ → bật `needsUpdate` khi đổi; gợn địa hình đồng cỏ làm chân ghế lơ lửng; `useFace` có thể bật với chuỗi không phải ảnh.
+- Chưa kiểm tra được: độ chính xác lấy màu với ảnh người thật (không có ảnh mẫu). Đã kiểm tra pipeline AI chạy thật trong trình duyệt (WASM + model + detect) bằng ảnh không có người.
 
 ### 2026-10-09
 - Giao diện mới: canvas 3D phủ toàn màn hình, panel kính mờ (glassmorphism) nổi bên phải; mobile: khung cảnh phía trên, panel cuộn bên dưới. Font Be Vietnam Pro.
