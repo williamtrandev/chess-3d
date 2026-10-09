@@ -20,7 +20,9 @@ export const viewport: Viewport = { themeColor: '#0b1220' };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="vi" className={font.variable}>
+    // Browser extensions often add classes to <html> before React loads (e.g. "mdl-js");
+    // ignore those attribute differences instead of reporting a hydration error.
+    <html lang="vi" className={font.variable} suppressHydrationWarning>
       <body className="font-sans text-white antialiased">
         <SettingsHydrator />
         {children}

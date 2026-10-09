@@ -4,102 +4,186 @@ import { useFrame } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   CanvasTexture,
-  CatmullRomCurve3,
+  CircleGeometry,
   Color,
+  CylinderGeometry,
   DoubleSide,
   IcosahedronGeometry,
   MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
-  TubeGeometry,
   Vector3,
   type InstancedMesh,
 } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { segmentRotation } from '@/lib/rig';
 import { GROUND_Y, fbm, gardenHeight, seededRandom } from '@/lib/scenery';
+import { growCherryTree, type TreeShape } from '@/lib/trees';
 import { Clouds, Flock, Terrain } from './common';
 
-const BLOSSOMS = ['#f7b7d2', '#f9cadd', '#f2a1c3', '#fbd6e4'];
+const BLOSSOMS = ['#f6b3cc', '#f29bbd', '#f8c3d6', '#ee8fb6', '#fad4e2', '#e57fa8'];
+const UP = new Vector3(0, 1, 0);
 const BIRD_RADIUS: [number, number] = [30, 70];
 const BIRD_HEIGHT: [number, number] = [18, 32];
 
-function CherryTrees() {
-  const blossom = useMemo(() => new IcosahedronGeometry(1, 1), []);
-  const materials = useMemo(
-    () => ({
-      bark: new MeshStandardMaterial({ color: '#3f2a22', roughness: 1 }),
-      petals: BLOSSOMS.map(
-        (c) => new MeshStandardMaterial({ color: c, roughness: 0.8, flatShading: true }),
-      ),
-    }),
-    [],
+const TREE_COUNT = 9;
+
+interface PlacedTree {
+  x: number;
+  z: number;
+  y: number;
+  turn: number;
+  shape: TreeShape;
+}
+
+/** Where the cherry trees stand, leaving the players' lines of sight open. */
+const placeTrees = (): PlacedTree[] => {
+  const random = seededRandom(83);
+  const list: PlacedTree[] = [];
+  while (list.length < TREE_COUNT) {
+    const a = random() * Math.PI * 2;
+    const r = 19 + random() * 30;
+    if (r < 32 && Math.abs(Math.cos(a)) < 0.55) continue;
+    const x = Math.cos(a) * r;
+    const z = Math.sin(a) * r;
+    if (list.some((t) => Math.hypot(t.x - x, t.z - z) < 11)) continue;
+    list.push({
+      x,
+      z,
+      y: gardenHeight(x, z) - 0.15,
+      turn: random() * Math.PI * 2,
+      shape: growCherryTree(list.length * 7 + 1),
+    });
+  }
+  return list;
+};
+
+/** One merged mesh per tree for trunk and limbs: tapered cylinders between branch points. */
+const barkGeometry = (shape: TreeShape) => {
+  const parts = shape.segments.map(({ from, to, radiusFrom, radiusTo }) => {
+    const length = from.distanceTo(to);
+    const g = new CylinderGeometry(radiusTo, radiusFrom, length, 7, 1, false);
+    g.applyQuaternion(segmentRotation(from, to));
+    g.translate((from.x + to.x) / 2, (from.y + to.y) / 2, (from.z + to.z) / 2);
+    return g;
+  });
+  const merged = mergeGeometries(parts);
+  parts.forEach((p) => p.dispose());
+  return merged;
+};
+
+function CherryTrees({ trees }: { trees: PlacedTree[] }) {
+  const bark = useMemo(() => new MeshStandardMaterial({ color: '#3b2620', roughness: 1 }), []);
+  const trunks = useMemo(
+    () => trees.map((tree) => ({ tree, geometry: barkGeometry(tree.shape) })),
+    [trees],
   );
   useEffect(
     () => () => {
-      blossom.dispose();
-      materials.bark.dispose();
-      materials.petals.forEach((m) => m.dispose());
+      bark.dispose();
+      trunks.forEach((t) => t.geometry.dispose());
     },
-    [blossom, materials],
+    [bark, trunks],
   );
-  const trees = useMemo(() => {
-    const random = seededRandom(83);
-    const list: {
-      x: number;
-      z: number;
-      s: number;
-      trunk: TubeGeometry;
-      blooms: [number, number, number, number, number][];
-    }[] = [];
-    while (list.length < 11) {
-      const a = random() * Math.PI * 2;
-      const r = 17 + random() * 32;
-      if (r < 30 && Math.abs(Math.cos(a)) < 0.5) continue;
-      const lean = new Vector3((random() - 0.5) * 3, 0, (random() - 0.5) * 3);
-      const curve = new CatmullRomCurve3([
-        new Vector3(0, 0, 0),
-        new Vector3(lean.x * 0.3, 2.5, lean.z * 0.3),
-        new Vector3(lean.x, 5, lean.z),
-      ]);
-      list.push({
-        x: Math.cos(a) * r,
-        z: Math.sin(a) * r,
-        s: 0.9 + random() * 0.5,
-        trunk: new TubeGeometry(curve, 12, 0.38, 8, false),
-        blooms: Array.from({ length: 8 }, () => [
-          lean.x + (random() - 0.5) * 5,
-          5.2 + random() * 2.4,
-          lean.z + (random() - 0.5) * 5,
-          1 + random() * 1.1,
-          Math.floor(random() * BLOSSOMS.length),
-        ]),
-      });
+
+  // All blossoms of all trees in one instanced mesh, each puff tinted from the palette.
+  const blossomCount = useMemo(
+    () => trees.reduce((n, t) => n + t.shape.blossoms.length, 0),
+    [trees],
+  );
+  const blossoms = useRef<InstancedMesh>(null);
+  const blossomGeometry = useMemo(() => new IcosahedronGeometry(1, 1), []);
+  useEffect(() => () => blossomGeometry.dispose(), [blossomGeometry]);
+  useEffect(() => {
+    const mesh = blossoms.current;
+    if (!mesh) return;
+    const dummy = new Object3D();
+    const color = new Color();
+    let i = 0;
+    for (const tree of trees) {
+      for (const b of tree.shape.blossoms) {
+        dummy.position
+          .copy(b.position)
+          .applyAxisAngle(UP, tree.turn)
+          .add(new Vector3(tree.x, tree.y, tree.z));
+        dummy.rotation.set(b.tint * 6, b.tint * 9, 0);
+        dummy.scale.set(b.scale * 1.15, b.scale * 0.85, b.scale * 1.15);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+        mesh.setColorAt(i, color.set(BLOSSOMS[Math.floor(b.tint * BLOSSOMS.length)] ?? '#f7b7d2'));
+        i++;
+      }
     }
-    return list;
-  }, []);
-  useEffect(() => () => trees.forEach((t) => t.trunk.dispose()), [trees]);
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [trees]);
 
   return (
     <group>
-      {trees.map((tree, i) => (
-        <group
+      {trunks.map(({ tree, geometry }, i) => (
+        <mesh
           key={i}
-          position={[tree.x, gardenHeight(tree.x, tree.z) - 0.2, tree.z]}
-          scale={tree.s}
-        >
-          <mesh geometry={tree.trunk} material={materials.bark} castShadow />
-          {tree.blooms.map(([x, y, z, s, c], j) => (
-            <mesh
-              key={j}
-              geometry={blossom}
-              material={materials.petals[c] ?? materials.bark}
-              position={[x, y, z]}
-              scale={[s * 1.4, s, s * 1.4]}
-              castShadow
-            />
-          ))}
-        </group>
+          geometry={geometry}
+          material={bark}
+          position={[tree.x, tree.y, tree.z]}
+          rotation-y={tree.turn}
+          castShadow
+          receiveShadow
+        />
       ))}
+      <instancedMesh ref={blossoms} args={[blossomGeometry, undefined, blossomCount]} castShadow>
+        <meshStandardMaterial
+          roughness={0.85}
+          flatShading
+          emissive="#ff9cc4"
+          emissiveIntensity={0.12}
+        />
+      </instancedMesh>
     </group>
+  );
+}
+
+/** Petals that have already fallen, carpeting the ground under each tree. */
+function FallenPetals({ trees, perTree }: { trees: PlacedTree[]; perTree: number }) {
+  const mesh = useRef<InstancedMesh>(null);
+  const geometry = useMemo(() => {
+    const g = new CircleGeometry(0.16, 5);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }, []);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(() => {
+    const instanced = mesh.current;
+    if (!instanced) return;
+    const random = seededRandom(101);
+    const dummy = new Object3D();
+    const color = new Color();
+    let i = 0;
+    for (const tree of trees) {
+      for (let k = 0; k < perTree; k++) {
+        const r = Math.sqrt(random()) * 7.5;
+        const a = random() * Math.PI * 2;
+        const x = tree.x + Math.cos(a) * r;
+        const z = tree.z + Math.sin(a) * r;
+        dummy.position.set(x, gardenHeight(x, z) + 0.03, z);
+        dummy.rotation.set(0, random() * Math.PI, 0);
+        dummy.scale.setScalar(0.6 + random() * 0.8);
+        dummy.updateMatrix();
+        instanced.setMatrixAt(i, dummy.matrix);
+        instanced.setColorAt(
+          i,
+          color.set(BLOSSOMS[Math.floor(random() * BLOSSOMS.length)] ?? '#f7b7d2'),
+        );
+        i++;
+      }
+    }
+    instanced.instanceMatrix.needsUpdate = true;
+    if (instanced.instanceColor) instanced.instanceColor.needsUpdate = true;
+  }, [trees, perTree]);
+  return (
+    <instancedMesh ref={mesh} args={[geometry, undefined, trees.length * perTree]} receiveShadow>
+      <meshStandardMaterial roughness={0.9} side={DoubleSide} />
+    </instancedMesh>
   );
 }
 
@@ -263,6 +347,7 @@ function Pond() {
 
 /** Japanese garden in spring: cherry blossoms, falling petals, raked gravel and a torii. */
 export function Sakura({ quality }: { quality: 'high' | 'low' }) {
+  const trees = useMemo(() => placeTrees(), []);
   const paint = useCallback((x: number, _y: number, z: number, color: Color) => {
     color.set('#6b8c4a').lerp(new Color('#4f7036'), fbm(x * 0.06, z * 0.06, 3));
   }, []);
@@ -270,8 +355,9 @@ export function Sakura({ quality }: { quality: 'high' | 'low' }) {
     <group>
       <Terrain size={420} segments={160} height={gardenHeight} paint={paint} />
       <Gravel />
-      <CherryTrees />
-      <Petals count={quality === 'high' ? 700 : 250} />
+      <CherryTrees trees={trees} />
+      <FallenPetals trees={trees} perTree={quality === 'high' ? 260 : 90} />
+      <Petals count={quality === 'high' ? 900 : 300} />
       {[
         [10, 10],
         [-10, 10],

@@ -13,6 +13,11 @@
 
 ## Nhật ký
 
+### 2026-10-09 (phiên 3)
+- Vườn anh đào: cây mọc theo thuật toán phân nhánh (thân vặn → 3–4 cành chính → cành phụ → nhánh), tán xòe rộng như chiếc ô với hàng trăm chùm hoa nhiều sắc hồng (instanced), cánh hoa rụng phủ dưới gốc.
+- Đêm lồng đèn: 8 cột cao quanh khoảng sân với dây treo 56 lồng đèn giấy đỏ/cam/vàng đung đưa; 4 cột đèn lớn gần bàn (có đèn chiếu thật) treo cao hơn đầu người chơi; đèn trời bay lên ở xa.
+- Sửa cảnh báo hydration ở `<html>` do extension trình duyệt chèn class (`mdl-js`): `suppressHydrationWarning` cho riêng thẻ `<html>`. Đánh thử 38 nước tới chiếu hết, không có lỗi runtime.
+
 ### 2026-10-09 (phiên 2)
 - 6 góc camera: Mặc định, Qua vai, Góc ngồi (ngôi thứ nhất), Cạnh bàn, Trên cao, Điện ảnh (tự lượn); phím V để đổi; lưu trong cài đặt.
 - Hai nhân vật 3D ngồi ghế hai bên bàn (dựng bằng code, phong cách chibi): thở, quay đầu nhìn nước vừa đi, với tay khi đi quân (IK hai khớp), chống cằm khi tới lượt, ăn mừng khi thắng, cúi đầu khi thua. Stockfish là robot có kính phát sáng. Nhân vật đứng giữa camera và bàn cờ tự mờ (hoặc ẩn ở góc ngồi).
