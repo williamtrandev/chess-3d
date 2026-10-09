@@ -229,6 +229,16 @@ Rate limit: tối đa 10 sự kiện mỗi giây trên một kết nối.
 - Theme: 3 bộ bàn/quân (gỗ, đá cẩm thạch, neon).
 - Hiệu năng: tự giảm DPR và tắt hậu kỳ trên máy yếu (`PerformanceMonitor`); tải Canvas theo kiểu lazy.
 
+### Ghi chú triển khai (Giai đoạn 1)
+- Quân mã dựng bằng `ExtrudeGeometry` từ hình nhìn ngang thay cho model glTF: không phụ thuộc file tải ngoài.
+- Ánh sáng môi trường dùng `Lightformer` của drei thay cho HDRI tải từ CDN; bóng đổ mềm từ directional light thay cho `ContactShadows`.
+- Ván với máy dùng đường dẫn `/game/ai?level=&color=`; thêm `/game/local` (hai người một máy). `/game/[id]` cho ván online ở Giai đoạn 2.
+- Bàn cờ đặt giữa khung cảnh 3D chọn được: **Đồng quê**, **Bãi biển**, **Phòng tối**. Canvas phủ toàn màn hình, panel kính mờ nổi phía trên; trang chủ cũng dùng khung cảnh làm nền. Mọi thứ dựng bằng code/shader, không tải asset ngoài.
+- Chất lượng đồ họa tự hạ khi FPS giảm (ít cỏ hơn, tắt hậu kỳ, giảm DPR).
+- 7 khung cảnh: Đồng quê, Hoàng hôn, Bãi biển, Núi tuyết, Đêm lồng đèn, Vườn anh đào, Phòng tối.
+- 6 góc camera (phím V): Mặc định, Qua vai, Góc ngồi, Cạnh bàn, Trên cao, Điện ảnh.
+- Hai người chơi ngồi tại bàn (nhân vật 3D có hoạt cảnh theo ván). Nhân vật của người chơi tạo ở `/avatar` từ ảnh toàn thân: nhận dạng dáng người bằng MediaPipe chạy trong trình duyệt, ảnh không rời khỏi máy. Ở Giai đoạn 2 (online), nhân vật sẽ cần lưu ở server (`identity`) và gửi cho đối thủ; khi đó chỉ gửi thông số màu/kiểu, ảnh mặt là tùy chọn người dùng bật.
+
 ### Tách logic khỏi hiển thị
 - Store (Zustand) giữ trạng thái ván, độc lập với Three.js.
 - Bàn cờ hiển thị qua interface `BoardView`. Bản đầu là `Board3D`; có `Board2D` đơn giản làm dự phòng (máy không hỗ trợ WebGL) và để test E2E dễ hơn.

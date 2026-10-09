@@ -1,0 +1,33 @@
+{
+  "name": "@chess3d/chess-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared chess rules, clocks and game outcomes for client and server",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0"
+  },
+  "devDependencies": {
+    "@chess3d/eslint-config": "workspace:*",
+    "@chess3d/tsconfig": "workspace:*",
+    "@vitest/coverage-v8": "^5.0.3",
+    "eslint": "^10.12.0",
+    "vitest": "^5.0.3"
+  }
+}

@@ -40,4 +40,19 @@ Dự án portfolio fullstack: nền tảng web game với game đầu tiên là 
 
 ## Lệnh thường dùng
 
-> Sẽ cập nhật khi scaffold xong (giai đoạn 1).
+Yêu cầu: Node 24 (`.nvmrc`), pnpm 11.
+
+```bash
+pnpm install                                   # cài dependency
+pnpm build | lint | typecheck | test           # chạy qua Turborepo cho mọi package
+pnpm format                                    # Prettier
+pnpm --filter @chess3d/chess-core test         # chạy cho một package
+pnpm --filter @chess3d/web dev                 # web tại http://localhost:3000
+```
+
+Ghi chú công cụ:
+- TypeScript ghim `~6.0.3` (typescript-eslint chưa hỗ trợ TS 7).
+- Thư viện trong `packages/` build bằng `tsc -p tsconfig.build.json` ra `dist/` (ESM + `.d.ts`); import nội bộ dùng đuôi `.js`.
+- pnpm 11 chặn build script mặc định; package cần build script phải khai báo trong `allowBuilds` của `pnpm-workspace.yaml`.
+- `apps/web` copy Stockfish vào `public/engine/` (bị gitignore) ở `predev`/`prebuild`.
+- Khi chạy dev, store ván được gắn vào `window.__chess3dGame` để debug và viết test trình duyệt.

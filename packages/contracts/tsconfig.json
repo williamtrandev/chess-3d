@@ -1,0 +1,8 @@
+{
+  "extends": "@chess3d/tsconfig/library.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src", "*.config.ts"]
+}

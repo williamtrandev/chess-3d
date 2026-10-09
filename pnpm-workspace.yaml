@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+  # Only creates convenience symlinks; the web app copies the engine files itself.
+  stockfish: false

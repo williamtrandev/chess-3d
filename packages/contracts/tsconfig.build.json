@@ -1,0 +1,5 @@
+{
+  "extends": "@chess3d/tsconfig/library.json",
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}
