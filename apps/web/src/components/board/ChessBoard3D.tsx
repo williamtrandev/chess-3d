@@ -1,19 +1,15 @@
 'use client';
 
-import { Environment, Lightformer, OrbitControls, PerformanceMonitor } from '@react-three/drei';
-import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { Bloom, EffectComposer } from '@react-three/postprocessing';
+import { OrbitControls } from '@react-three/drei';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   MeshStandardMaterial,
-  Spherical,
   Vector3,
   type BufferGeometry,
   type Group,
   type Material,
 } from 'three';
-import type { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { Color } from '@chess3d/chess-core';
 import {
   SQUARES,
   isLightSquare,
@@ -56,60 +52,18 @@ interface DragState {
   point: Vector3;
 }
 
-export default function Board3D({ theme, topDown }: { theme: Theme; topDown: boolean }) {
-  const [effects, setEffects] = useState(true);
-  const [dpr, setDpr] = useState(1.5);
-
-  return (
-    <Canvas
-      shadows="soft"
-      dpr={dpr}
-      camera={{ fov: 42, position: [0, 13, 9.3] }}
-      aria-label="Bàn cờ 3D"
-    >
-      <color attach="background" args={[theme.background]} />
-      <PerformanceMonitor
-        onDecline={() => {
-          setDpr(1);
-          setEffects(false);
-        }}
-      />
-      <ambientLight intensity={0.35} />
-      <directionalLight
-        castShadow
-        position={[4, 10, 6]}
-        intensity={1.8}
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0004}
-        shadow-camera-left={-6}
-        shadow-camera-right={6}
-        shadow-camera-top={6}
-        shadow-camera-bottom={-6}
-      />
-      <Environment resolution={256}>
-        <Lightformer form="rect" intensity={2} position={[0, 6, -6]} scale={[12, 3, 1]} />
-        <Lightformer
-          form="rect"
-          intensity={1.2}
-          position={[-6, 4, 2]}
-          scale={[3, 8, 1]}
-          rotation-y={Math.PI / 2}
-        />
-        <Lightformer form="ring" intensity={1.5} position={[5, 5, 5]} scale={3} />
-      </Environment>
-      <Scene theme={theme} topDown={topDown} />
-      {effects && (
-        <EffectComposer>
-          <Bloom mipmapBlur intensity={theme.bloom} luminanceThreshold={0.75} />
-        </EffectComposer>
-      )}
-    </Canvas>
-  );
-}
-
-function Scene({ theme, topDown }: { theme: Theme; topDown: boolean }) {
+/**
+ * The board, pieces and their interaction, to be placed inside a scene. When not
+ * interactive (decorative backdrop), the camera slowly circles the board instead.
+ */
+export function ChessBoard3D({
+  theme,
+  interactive = true,
+}: {
+  theme: Theme;
+  interactive?: boolean;
+}) {
   const store = useGameStoreApi();
-  const orientation = useGame((s) => s.orientation);
   const outcome = useGame((s) => s.outcome);
   const { pieces, selected, targets, lastMove, checkSquare, canMove } = useBoardState();
   const moves = useGame((s) => s.moves);
@@ -158,6 +112,7 @@ function Scene({ theme, topDown }: { theme: Theme; topDown: boolean }) {
   });
 
   const onPiecePointerDown = (event: ThreeEvent<PointerEvent>, piece: BoardPiece) => {
+    if (!interactive) return;
     event.stopPropagation();
     const state = store.getState();
     wasSelected.current = state.selected === piece.square;
@@ -192,12 +147,18 @@ function Scene({ theme, topDown }: { theme: Theme; topDown: boolean }) {
       <OrbitControls
         makeDefault
         enabled={!dragging}
+        enableRotate={interactive}
+        enableZoom={interactive}
         enablePan={false}
-        minDistance={8}
-        maxDistance={22}
-        maxPolarAngle={1.25}
+        enableDamping
+        dampingFactor={0.08}
+        rotateSpeed={0.6}
+        minDistance={9}
+        maxDistance={30}
+        maxPolarAngle={1.4}
+        autoRotate={!interactive}
+        autoRotateSpeed={0.35}
       />
-      <CameraRig orientation={orientation} topDown={topDown} />
 
       <group ref={boardGroup}>
         <mesh position={[0, -0.21, 0]} receiveShadow castShadow>
@@ -214,6 +175,7 @@ function Scene({ theme, topDown }: { theme: Theme; topDown: boolean }) {
               rotation-x={-Math.PI / 2}
               receiveShadow
               onPointerDown={(e) => {
+                if (!interactive) return;
                 e.stopPropagation();
                 store.getState().select(square);
               }}
@@ -247,7 +209,7 @@ function Scene({ theme, topDown }: { theme: Theme; topDown: boolean }) {
               material={materials[piece.color]}
               lifted={piece.square === selected}
               drag={drag}
-              interactive={canMove || targets.has(piece.square)}
+              interactive={interactive && (canMove || targets.has(piece.square))}
               onPointerDown={onPiecePointerDown}
             />
           );
@@ -467,51 +429,4 @@ function Highlights({ selected, targets, lastMove, checkSquare, occupied }: High
       )}
     </group>
   );
-}
-
-/** Smoothly moves the camera to the player's side, or to a top-down view. */
-function CameraRig({ orientation, topDown }: { orientation: Color; topDown: boolean }) {
-  const camera = useThree((s) => s.camera);
-  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
-  const goal = useRef<Spherical | null>(null);
-
-  useEffect(() => {
-    goal.current = new Spherical(
-      16,
-      topDown ? 0.0001 : 0.62,
-      orientation === 'white' ? 0 : Math.PI,
-    );
-  }, [orientation, topDown]);
-
-  useEffect(() => {
-    if (!controls) return;
-    const cancel = () => {
-      goal.current = null;
-    };
-    controls.addEventListener('start', cancel);
-    return () => controls.removeEventListener('start', cancel);
-  }, [controls]);
-
-  useFrame((_, delta) => {
-    const g = goal.current;
-    if (!g) return;
-    const current = new Spherical().setFromVector3(camera.position);
-    const k = 1 - Math.exp(-delta * 6);
-    const dTheta = Math.atan2(Math.sin(g.theta - current.theta), Math.cos(g.theta - current.theta));
-    current.radius += (g.radius - current.radius) * k;
-    current.phi += (g.phi - current.phi) * k;
-    current.theta += dTheta * k;
-    camera.position.setFromSpherical(current);
-    camera.lookAt(0, 0, 0);
-    controls?.update();
-    if (
-      Math.abs(dTheta) < 0.001 &&
-      Math.abs(g.phi - current.phi) < 0.001 &&
-      Math.abs(g.radius - current.radius) < 0.01
-    ) {
-      goal.current = null;
-    }
-  });
-
-  return null;
 }

@@ -57,3 +57,29 @@ export const pieceAt = (pieces: readonly BoardPiece[], square: string): BoardPie
 
 export const kingSquare = (pieces: readonly BoardPiece[], color: Color): string | undefined =>
   pieces.find((p) => p.type === 'k' && p.color === color)?.square;
+
+const START_COUNTS: Record<Exclude<PieceType, 'k'>, number> = { q: 1, r: 2, b: 2, n: 2, p: 8 };
+const VALUES: Record<Exclude<PieceType, 'k'>, number> = { q: 9, r: 5, b: 3, n: 3, p: 1 };
+
+export interface Material {
+  /** Pieces of the opponent this side has captured, strongest first. */
+  captured: Record<Color, Exclude<PieceType, 'k'>[]>;
+  /** Material advantage in pawns (positive for the side ahead), per side. */
+  advantage: Record<Color, number>;
+}
+
+/** Captured pieces and material balance, derived from the position alone. */
+export const materialBalance = (pieces: readonly BoardPiece[]): Material => {
+  const score: Record<Color, number> = { white: 0, black: 0 };
+  const captured: Material['captured'] = { white: [], black: [] };
+  for (const color of ['white', 'black'] as const) {
+    const opponent = color === 'white' ? 'black' : 'white';
+    for (const type of ['q', 'r', 'b', 'n', 'p'] as const) {
+      const onBoard = pieces.filter((p) => p.color === color && p.type === type).length;
+      score[color] += onBoard * VALUES[type];
+      for (let i = onBoard; i < START_COUNTS[type]; i++) captured[opponent].push(type);
+    }
+  }
+  const diff = score.white - score.black;
+  return { captured, advantage: { white: Math.max(0, diff), black: Math.max(0, -diff) } };
+};
