@@ -1,14 +1,21 @@
 'use client';
 
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
+  AdditiveBlending,
   BufferGeometry,
+  CanvasTexture,
+  Color,
   DoubleSide,
   Float32BufferAttribute,
   IcosahedronGeometry,
   MeshStandardMaterial,
+  NormalBlending,
+  PlaneGeometry,
+  PointsMaterial,
   type Group,
+  type Points,
 } from 'three';
 import { seededRandom } from '@/lib/scenery';
 
@@ -185,4 +192,155 @@ export function Flock({
       ))}
     </group>
   );
+}
+
+/** Ground mesh shaped by a height function and colored per vertex. */
+export function Terrain({
+  size,
+  segments,
+  height,
+  paint,
+}: {
+  size: number;
+  segments: number;
+  height: (x: number, z: number) => number;
+  /** Sets `color` for a vertex at (x, y, z). */
+  paint: (x: number, y: number, z: number, color: Color) => void;
+}) {
+  const geometry = useMemo(() => {
+    const g = new PlaneGeometry(size, size, segments, segments);
+    g.rotateX(-Math.PI / 2);
+    const position = g.attributes.position;
+    if (!position) return g;
+    const colors: number[] = [];
+    const color = new Color();
+    for (let i = 0; i < position.count; i++) {
+      const x = position.getX(i);
+      const z = position.getZ(i);
+      const y = height(x, z);
+      position.setY(i, y);
+      paint(x, y, z, color);
+      colors.push(color.r, color.g, color.b);
+    }
+    g.setAttribute('color', new Float32BufferAttribute(colors, 3));
+    g.computeVertexNormals();
+    return g;
+  }, [size, segments, height, paint]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh geometry={geometry} receiveShadow>
+      <meshStandardMaterial vertexColors roughness={1} />
+    </mesh>
+  );
+}
+
+const dotTexture = (() => {
+  let texture: CanvasTexture | null = null;
+  return () => {
+    if (texture || typeof document === 'undefined') return texture;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.4, 'rgba(255,255,255,0.8)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 64, 64);
+    texture = new CanvasTexture(canvas);
+    return texture;
+  };
+})();
+
+interface ParticlesProps {
+  count: number;
+  color: string;
+  size: number;
+  /** Horizontal radius and vertical range of the volume the particles live in. */
+  radius: number;
+  bottom: number;
+  top: number;
+  /** `fall` drifts down and wraps to the top (snow); `float` wanders in place (fireflies). */
+  mode: 'fall' | 'float';
+  speed?: number;
+  glow?: boolean;
+  seed?: number;
+}
+
+/** Cheap point particles animated on the CPU: snowflakes, fireflies, golden dust. */
+export function Particles({
+  count,
+  color,
+  size,
+  radius,
+  bottom,
+  top,
+  mode,
+  speed = 1,
+  glow = false,
+  seed = 2,
+}: ParticlesProps) {
+  const points = useRef<Points>(null);
+  const { geometry, base, phase } = useMemo(() => {
+    const random = seededRandom(seed);
+    const base = new Float32Array(count * 3);
+    const phase = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      const r = Math.sqrt(random()) * radius;
+      const a = random() * Math.PI * 2;
+      base[i * 3] = Math.cos(a) * r;
+      base[i * 3 + 1] = bottom + random() * (top - bottom);
+      base[i * 3 + 2] = Math.sin(a) * r;
+      phase[i] = random() * Math.PI * 2;
+    }
+    const g = new BufferGeometry();
+    g.setAttribute('position', new Float32BufferAttribute(base.slice(), 3));
+    return { geometry: g, base, phase };
+  }, [count, radius, bottom, top, seed]);
+  const material = useMemo(
+    () =>
+      new PointsMaterial({
+        color,
+        size,
+        map: dotTexture(),
+        transparent: true,
+        depthWrite: false,
+        blending: glow ? AdditiveBlending : NormalBlending,
+        sizeAttenuation: true,
+      }),
+    [color, size, glow],
+  );
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
+
+  useFrame(({ clock }, delta) => {
+    const position = points.current?.geometry.attributes.position;
+    if (!position) return;
+    const array = position.array as Float32Array;
+    const t = clock.elapsedTime;
+    for (let i = 0; i < count; i++) {
+      const p = phase[i] ?? 0;
+      if (mode === 'fall') {
+        let y = (array[i * 3 + 1] ?? 0) - speed * delta * (0.7 + (p % 1) * 0.6);
+        if (y < bottom) y = top;
+        array[i * 3 + 1] = y;
+        array[i * 3] = (base[i * 3] ?? 0) + Math.sin(t * 0.6 + p) * 1.2;
+        array[i * 3 + 2] = (base[i * 3 + 2] ?? 0) + Math.cos(t * 0.5 + p) * 1.2;
+      } else {
+        array[i * 3] = (base[i * 3] ?? 0) + Math.sin(t * 0.4 * speed + p) * 1.6;
+        array[i * 3 + 1] = (base[i * 3 + 1] ?? 0) + Math.sin(t * 0.9 * speed + p * 2) * 0.6;
+        array[i * 3 + 2] = (base[i * 3 + 2] ?? 0) + Math.cos(t * 0.35 * speed + p) * 1.6;
+      }
+    }
+    position.needsUpdate = true;
+    if (glow) material.opacity = 0.75 + Math.sin(t * 3) * 0.25;
+  });
+
+  return <points ref={points} geometry={geometry} material={material} frustumCulled={false} />;
 }

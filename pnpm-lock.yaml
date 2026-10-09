@@ -26,6 +26,9 @@ importers:
       '@chess3d/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@mediapipe/tasks-vision':
+        specifier: 0.10.17
+        version: 0.10.17
       '@react-three/drei':
         specifier: ^10.7.9
         version: 10.7.9(@react-three/fiber@9.8.1(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1))(@types/react@19.3.0)(@types/three@0.186.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)

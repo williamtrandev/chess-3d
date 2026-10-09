@@ -19,6 +19,7 @@ import { PlayersPanel } from './PlayersPanel';
 import { PromotionDialog } from './PromotionDialog';
 import { ResultDialog } from './ResultDialog';
 import { SettingsPanel } from './SettingsPanel';
+import { ViewPicker } from './ViewPicker';
 import { useEngineOpponent } from './use-engine-opponent';
 import { useGameSounds } from './use-game-sounds';
 
@@ -53,7 +54,6 @@ function GameLayout() {
   const theme = THEMES[settings.theme];
   const webgl = useWebGL();
   const use3D = settings.view === '3d' && webgl;
-  const [topDown, setTopDown] = useState(false);
 
   const mode = useGame((s) => s.mode);
   const turn = useGame((s) => s.turn);
@@ -72,7 +72,6 @@ function GameLayout() {
               quality={settings.quality}
               showBoard={use3D}
               interactive
-              topDown={topDown}
               layout="game"
             />
           </div>
@@ -110,10 +109,11 @@ function GameLayout() {
         </div>
       </header>
 
-      <aside className="scrollbar-none relative z-10 mx-auto -mt-8 flex max-w-xl flex-col gap-3 px-4 pb-8 lg:fixed lg:bottom-4 lg:right-4 lg:top-4 lg:mt-0 lg:w-[364px] lg:max-w-none lg:overflow-y-auto lg:px-0 lg:pb-0">
+      <aside className="scrollbar-none relative z-10 mx-auto -mt-8 flex max-w-xl flex-col gap-3 px-4 pb-8 lg:fixed lg:bottom-4 lg:right-4 lg:top-4 lg:mt-0 lg:w-[364px] lg:max-w-none lg:overflow-y-auto lg:px-0 lg:pb-0 [&>*]:shrink-0">
         <PlayersPanel thinking={thinking} />
         <MoveList />
-        <ActionBar topDown={topDown} onToggleTopDown={() => setTopDown((v) => !v)} can3D={use3D} />
+        <ActionBar />
+        <ViewPicker enabled={webgl} />
         <SettingsPanel webgl={webgl} />
       </aside>
     </main>

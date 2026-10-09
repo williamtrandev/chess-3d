@@ -15,6 +15,12 @@ const MODES = [
     title: 'Hai người một máy',
     text: 'Ngồi cạnh nhau, thay phiên đi quân.',
   },
+  {
+    href: '/avatar',
+    icon: '🧑‍🎨',
+    title: 'Nhân vật của bạn',
+    text: 'Tạo người ngồi đánh cờ từ ảnh toàn thân.',
+  },
 ];
 
 export default function HomePage() {
@@ -29,7 +35,7 @@ export default function HomePage() {
           <SceneryPicker />
         </header>
 
-        <section className="max-w-xl py-12">
+        <section className="max-w-2xl py-12">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide ring-1 ring-white/20 backdrop-blur">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
             Cờ vua 3D · miễn phí · không cần cài đặt
@@ -42,11 +48,11 @@ export default function HomePage() {
             .
           </h1>
           <p className="mt-5 max-w-md text-lg text-white/85 drop-shadow">
-            Bày bàn cờ giữa đồng quê lộng gió hay bên bờ biển rì rào. Xoay bàn, kéo quân, nghe tiếng
-            quân chạm gỗ.
+            Bày bàn cờ giữa đồng quê, bãi biển, núi tuyết hay vườn anh đào. Tự tạo nhân vật của bạn
+            từ ảnh, ngồi vào bàn và đấu với Stockfish.
           </p>
 
-          <div className="mt-9 grid gap-3 sm:grid-cols-2">
+          <div className="mt-9 grid gap-3 sm:grid-cols-3">
             {MODES.map((mode) => (
               <Link
                 key={mode.href}
@@ -60,7 +66,7 @@ export default function HomePage() {
                   <span className="block font-semibold">{mode.title}</span>
                   <span className="mt-0.5 block text-sm text-white/70">{mode.text}</span>
                   <span className="mt-2 inline-block text-sm font-semibold text-amber-300 transition group-hover:translate-x-1">
-                    Vào chơi →
+                    Mở →
                   </span>
                 </span>
               </Link>

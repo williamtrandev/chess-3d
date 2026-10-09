@@ -19,21 +19,53 @@ import {
   type Group,
   type InstancedMesh,
 } from 'three';
-import { fieldHeight, fbm, seededRandom } from '@/lib/scenery';
+import { GROUND_Y, fieldHeight, fbm, seededRandom } from '@/lib/scenery';
 import { Clouds, Flock } from './common';
 
 const TERRAIN_SIZE = 520;
 
-function Meadow() {
+export type FieldVariant = 'day' | 'sunset' | 'night';
+
+interface FieldPalette {
+  meadow: [light: string, dark: string, dry: string];
+  grass: [base: string, tip: string, sun: string];
+  clouds: string | null;
+  birds: string | null;
+}
+
+const PALETTES: Record<FieldVariant, FieldPalette> = {
+  day: {
+    meadow: ['#7fb24a', '#4a7d2c', '#b8b45a'],
+    grass: ['#2f5a1c', '#a7d65a', '#fff1c9'],
+    clouds: '#ffffff',
+    birds: '#2b2b33',
+  },
+  sunset: {
+    meadow: ['#9c9a3e', '#5b6a26', '#c9954a'],
+    grass: ['#3a4818', '#e0c45c', '#ffb36b'],
+    clouds: '#ffc4a0',
+    birds: '#2a1a1a',
+  },
+  night: {
+    meadow: ['#21402b', '#10261a', '#27402c'],
+    grass: ['#0b1d12', '#2f6a44', '#7f9cff'],
+    clouds: null,
+    birds: null,
+  },
+};
+const BIRD_RADIUS: [number, number] = [30, 80];
+const BIRD_HEIGHT: [number, number] = [22, 40];
+const BUTTERFLY_RADIUS: [number, number] = [10, 22];
+const BUTTERFLY_HEIGHT: [number, number] = [GROUND_Y + 1, GROUND_Y + 2.4];
+
+function Meadow({ palette }: { palette: FieldPalette }) {
   const geometry = useMemo(() => {
     const g = new PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, 220, 220);
     g.rotateX(-Math.PI / 2);
     const position = g.attributes.position;
     if (!position) return g;
     const colors: number[] = [];
-    const light = new Color('#7fb24a');
-    const dark = new Color('#4a7d2c');
-    const dry = new Color('#b8b45a');
+    const [light, dark, dry] = palette.meadow.map((c) => new Color(c)) as [Color, Color, Color];
     const c = new Color();
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i);
@@ -46,7 +78,7 @@ function Meadow() {
     g.setAttribute('color', new Float32BufferAttribute(colors, 3));
     g.computeVertexNormals();
     return g;
-  }, []);
+  }, [palette]);
   useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
@@ -119,7 +151,7 @@ const bladeGeometry = () => {
   return g;
 };
 
-function Grass({ count }: { count: number }) {
+function Grass({ count, colors }: { count: number; colors: FieldPalette['grass'] }) {
   const mesh = useRef<InstancedMesh>(null);
   const geometry = useMemo(() => {
     const g = bladeGeometry();
@@ -144,13 +176,13 @@ function Grass({ count }: { count: number }) {
           UniformsLib.fog,
           {
             uTime: { value: 0 },
-            uBase: { value: new Color('#2f5a1c') },
-            uTip: { value: new Color('#a7d65a') },
-            uSun: { value: new Color('#fff1c9') },
+            uBase: { value: new Color(colors[0]) },
+            uTip: { value: new Color(colors[1]) },
+            uSun: { value: new Color(colors[2]) },
           },
         ]),
       }),
-    [],
+    [colors],
   );
 
   useEffect(() => {
@@ -311,25 +343,50 @@ function Trees() {
   );
 }
 
-/** Sunny countryside: rolling meadow, swaying grass, flowers, trees, butterflies and birds. */
-export function Field({ quality }: { quality: 'high' | 'low' }) {
+/**
+ * Countryside: rolling meadow, swaying grass, flowers and trees, by day (with butterflies
+ * and birds), at sunset, or at night.
+ */
+export function Field({
+  quality,
+  variant = 'day',
+}: {
+  quality: 'high' | 'low';
+  variant?: FieldVariant;
+}) {
+  const palette = PALETTES[variant];
+  const high = quality === 'high';
   return (
     <group>
-      <Meadow />
-      <Grass count={quality === 'high' ? 60000 : 16000} />
-      <Flowers count={quality === 'high' ? 1400 : 500} />
-      <Trees />
-      <Clouds count={18} seed={4} />
-      <Flock count={7} color="#2b2b33" radius={[30, 80]} height={[22, 40]} size={1.4} seed={8} />
-      <Flock
-        count={10}
-        color="#ffcc33"
-        radius={[7, 18]}
-        height={[-2.4, -1.2]}
-        size={0.22}
-        flapSpeed={22}
-        seed={12}
+      <Meadow palette={palette} />
+      <Grass
+        count={Math.round((high ? 60000 : 16000) * (variant === 'night' ? 0.6 : 1))}
+        colors={palette.grass}
       />
+      <Flowers count={high ? 1400 : 500} />
+      <Trees />
+      {palette.clouds && <Clouds count={18} seed={4} color={palette.clouds} />}
+      {palette.birds && (
+        <Flock
+          count={7}
+          color={palette.birds}
+          radius={BIRD_RADIUS}
+          height={BIRD_HEIGHT}
+          size={1.4}
+          seed={8}
+        />
+      )}
+      {variant === 'day' && (
+        <Flock
+          count={10}
+          color="#ffcc33"
+          radius={BUTTERFLY_RADIUS}
+          height={BUTTERFLY_HEIGHT}
+          size={0.22}
+          flapSpeed={22}
+          seed={12}
+        />
+      )}
     </group>
   );
 }

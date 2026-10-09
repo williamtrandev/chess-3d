@@ -6,6 +6,8 @@ import {
   beachHeight,
   fbm,
   fieldHeight,
+  gardenHeight,
+  snowHeight,
   hash,
   noise2,
   seededRandom,
@@ -38,5 +40,22 @@ describe('scenery helpers', () => {
     expect(beachHeight(0, 0)).toBeCloseTo(GROUND_Y);
     expect(beachHeight(10, 0)).toBeGreaterThan(WATER_Y);
     expect(beachHeight(ISLAND_RADIUS + 30, 0)).toBeLessThan(WATER_Y);
+  });
+
+  it('keeps every scene flat under the table and characters', () => {
+    for (const height of [fieldHeight, snowHeight, gardenHeight]) {
+      for (const [x, z] of [
+        [0, 0],
+        [0, 9],
+        [-6, -9],
+      ] as const) {
+        expect(height(x, z)).toBeCloseTo(GROUND_Y, 1);
+      }
+    }
+  });
+
+  it('raises mountains around the snowy valley', () => {
+    const far = [0, 1, 2, 3].map((i) => snowHeight(Math.cos(i) * 220, Math.sin(i) * 220));
+    expect(Math.max(...far)).toBeGreaterThan(GROUND_Y + 20);
   });
 });

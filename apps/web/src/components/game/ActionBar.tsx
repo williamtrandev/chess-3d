@@ -1,18 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { EyeIcon, FlagIcon, FlipIcon, RefreshIcon } from '../ui/icons';
+import { FlagIcon, FlipIcon, RefreshIcon } from '../ui/icons';
 import { useGame } from './game-context';
 
-export function ActionBar({
-  topDown,
-  onToggleTopDown,
-  can3D,
-}: {
-  topDown: boolean;
-  onToggleTopDown: () => void;
-  can3D: boolean;
-}) {
+export function ActionBar() {
   const mode = useGame((s) => s.mode);
   const outcome = useGame((s) => s.outcome);
   const newGame = useGame((s) => s.newGame);
@@ -41,16 +33,10 @@ export function ActionBar({
     },
     { label: 'Ván mới', icon: <RefreshIcon />, onClick: () => newGame(mode) },
     { label: 'Lật bàn', icon: <FlipIcon />, onClick: () => flip() },
-    {
-      label: topDown ? 'Góc nghiêng' : 'Nhìn từ trên',
-      icon: <EyeIcon />,
-      onClick: onToggleTopDown,
-      disabled: !can3D,
-    },
   ];
 
   return (
-    <section className="glass grid grid-cols-4 gap-1.5 p-2" aria-label="Thao tác">
+    <section className="glass grid grid-cols-3 gap-1.5 p-2" aria-label="Thao tác">
       {actions.map((action) => (
         <button
           key={action.label}

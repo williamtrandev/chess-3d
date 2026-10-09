@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/copy-engine.mjs",
+    "predev": "node scripts/copy-assets.mjs",
     "dev": "next dev --port 3000",
-    "prebuild": "node scripts/copy-engine.mjs",
+    "prebuild": "node scripts/copy-assets.mjs",
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint .",
@@ -16,6 +16,7 @@
   "dependencies": {
     "@chess3d/chess-core": "workspace:*",
     "@chess3d/contracts": "workspace:*",
+    "@mediapipe/tasks-vision": "0.10.17",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "@react-three/postprocessing": "^3.1.3",

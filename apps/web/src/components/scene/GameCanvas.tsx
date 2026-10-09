@@ -6,12 +6,15 @@ import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { useEffect, useMemo, useRef } from 'react';
 import { Spherical, type PerspectiveCamera } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { SceneryId } from '@/lib/scenery';
+import { VIEW_PRESETS, type ViewPreset } from '@/lib/camera-views';
+import { GROUND_Y, TABLE_WOOD, type SceneryId } from '@/lib/scenery';
 import { useSettings, type Quality } from '@/lib/settings-store';
 import type { Theme } from '@/lib/themes';
 import { ChessBoard3D } from '../board/ChessBoard3D';
+import { Players } from '../characters/Players';
 import { useGame } from '../game/game-context';
-import { Scenery } from '../scenery/Scenery';
+import { SCENE_BLOOM, Scenery } from '../scenery/Scenery';
+import { Table } from './Table';
 
 /** Where the HTML overlay sits, so the board can be framed in the free space next to it. */
 export type CanvasLayout = 'game' | 'home';
@@ -23,12 +26,24 @@ interface Props {
   /** Draw the 3D board (false when the 2D board is shown over the scenery). */
   showBoard: boolean;
   interactive: boolean;
-  topDown?: boolean;
   layout: CanvasLayout;
 }
 
-const BASE_PHI = 1.1;
-const BASE_RADIUS = 16;
+/** Slow orbit used behind the menu pages. */
+const HOME_PRESET: ViewPreset = {
+  radius: 24,
+  phi: 1.12,
+  theta: 0.5,
+  lift: 0.1,
+  autoRotate: true,
+  ownAvatar: 'show',
+};
+
+const usePreset = (layout: CanvasLayout): ViewPreset => {
+  const view = useSettings((s) => s.cameraView);
+  // Fall back if storage holds a view this version does not know.
+  return layout === 'home' ? HOME_PRESET : (VIEW_PRESETS[view] ?? VIEW_PRESETS.player);
+};
 
 export default function GameCanvas({
   theme,
@@ -36,10 +51,11 @@ export default function GameCanvas({
   quality,
   showBoard,
   interactive,
-  topDown = false,
   layout,
 }: Props) {
   const setQuality = useSettings((s) => s.setQuality);
+  const showPlayers = useSettings((s) => s.showPlayers);
+  const preset = usePreset(layout);
   const outdoor = scenery !== 'studio';
 
   return (
@@ -52,8 +68,16 @@ export default function GameCanvas({
     >
       <PerformanceMonitor onDecline={() => setQuality('low')} />
       <Scenery id={scenery} quality={quality} theme={theme} />
+      {!outdoor && (
+        <mesh rotation-x={-Math.PI / 2} position-y={GROUND_Y} receiveShadow>
+          <circleGeometry args={[30, 64]} />
+          <meshStandardMaterial color="#14161c" roughness={0.9} />
+        </mesh>
+      )}
+      <Table wood={TABLE_WOOD[scenery]} />
+      {showPlayers && <Players occlusion={preset.ownAvatar} wood={TABLE_WOOD[scenery]} />}
       {showBoard ? (
-        <ChessBoard3D theme={theme} interactive={interactive} />
+        <ChessBoard3D theme={theme} interactive={interactive} autoRotate={preset.autoRotate} />
       ) : (
         <OrbitControls
           makeDefault
@@ -64,13 +88,13 @@ export default function GameCanvas({
           autoRotateSpeed={0.25}
         />
       )}
-      <CameraRig topDown={topDown} layout={layout} />
+      <CameraRig preset={preset} layout={layout} />
       {quality === 'high' && (
         <EffectComposer>
           <Bloom
             mipmapBlur
-            intensity={outdoor ? theme.bloom * 0.5 : theme.bloom}
-            luminanceThreshold={outdoor ? 0.95 : 0.75}
+            intensity={theme.bloom * SCENE_BLOOM[scenery].intensity}
+            luminanceThreshold={SCENE_BLOOM[scenery].threshold}
           />
           <Vignette offset={0.25} darkness={outdoor ? 0.45 : 0.6} />
         </EffectComposer>
@@ -81,9 +105,9 @@ export default function GameCanvas({
 
 /**
  * Frames the board in the space left free by the HTML panels, and smoothly moves the
- * camera to the player's side (or a top-down view) whenever that changes.
+ * camera to the chosen view from the player's side whenever either changes.
  */
-function CameraRig({ topDown, layout }: { topDown: boolean; layout: CanvasLayout }) {
+function CameraRig({ preset, layout }: { preset: ViewPreset; layout: CanvasLayout }) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const { width, height } = useThree((s) => s.size);
@@ -94,12 +118,11 @@ function CameraRig({ topDown, layout }: { topDown: boolean; layout: CanvasLayout
     const desktop = width >= 1024;
     // Positive: panel on the right (board shifts left); negative: panel on the left.
     const panel = !desktop ? 0 : layout === 'game' ? 380 : -Math.min(620, width * 0.45);
-    const lift = layout === 'game' ? (desktop ? 0.16 : 0.08) : 0.12;
+    const lift = desktop ? preset.lift : preset.lift * 0.5;
     const freeAspect = (width - Math.abs(panel)) / Math.max(1, height);
-    const radius =
-      (layout === 'home' ? 18 : BASE_RADIUS) * Math.max(1, (1.18 / freeAspect) ** 0.75);
-    return { panel, lift, radius };
-  }, [width, height, layout]);
+    const scale = Math.max(1, (1.18 / freeAspect) ** 0.75);
+    return { panel, lift, scale };
+  }, [width, height, layout, preset.lift]);
 
   useEffect(() => {
     camera.setViewOffset(width, height, framing.panel / 2, -framing.lift * height, width, height);
@@ -108,11 +131,11 @@ function CameraRig({ topDown, layout }: { topDown: boolean; layout: CanvasLayout
 
   useEffect(() => {
     goal.current = new Spherical(
-      framing.radius,
-      topDown ? 0.0001 : BASE_PHI,
-      orientation === 'white' ? 0 : Math.PI,
+      preset.radius * framing.scale,
+      preset.phi,
+      (orientation === 'white' ? 0 : Math.PI) + preset.theta,
     );
-  }, [orientation, topDown, framing.radius]);
+  }, [orientation, preset, framing.scale]);
 
   useEffect(() => {
     if (!controls) return;
@@ -127,7 +150,7 @@ function CameraRig({ topDown, layout }: { topDown: boolean; layout: CanvasLayout
     const g = goal.current;
     if (!g) return;
     const current = new Spherical().setFromVector3(camera.position);
-    const k = 1 - Math.exp(-delta * 4);
+    const k = 1 - Math.exp(-delta * 3.5);
     const dTheta = Math.atan2(Math.sin(g.theta - current.theta), Math.cos(g.theta - current.theta));
     current.radius += (g.radius - current.radius) * k;
     current.phi += (g.phi - current.phi) * k;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useShallow } from 'zustand/react/shallow';
-import { SCENERY_IDS, SCENERY_LABEL } from '@/lib/scenery';
+import { SCENERY_EMOJI, SCENERY_IDS, SCENERY_LABEL } from '@/lib/scenery';
 import { useSettings } from '@/lib/settings-store';
 import { THEMES, THEME_IDS } from '@/lib/themes';
 import { SoundIcon } from '../ui/icons';
@@ -24,7 +24,7 @@ export function SettingsPanel({ webgl }: { webgl: boolean }) {
     <section className="glass space-y-4 p-4" aria-label="Cài đặt">
       <div>
         <p className="label mb-2">Khung cảnh</p>
-        <div className="segmented">
+        <div className="grid grid-cols-4 gap-1.5">
           {SCENERY_IDS.map((id) => (
             <button
               key={id}
@@ -32,7 +32,13 @@ export function SettingsPanel({ webgl }: { webgl: boolean }) {
               aria-pressed={s.scenery === id}
               onClick={() => s.setScenery(id)}
               disabled={!webgl}
+              className={`flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2 text-[10.5px] font-medium leading-tight transition duration-200 disabled:opacity-35 ${
+                s.scenery === id
+                  ? 'bg-white text-slate-900 shadow'
+                  : 'bg-white/5 text-white/80 hover:bg-white/15'
+              }`}
             >
+              <span className="text-base leading-none">{SCENERY_EMOJI[id]}</span>
               {SCENERY_LABEL[id]}
             </button>
           ))}

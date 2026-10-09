@@ -20,24 +20,12 @@ import {
 } from '@/lib/board';
 import type { Theme, PieceMaterial } from '@/lib/themes';
 import { useGame, useGameStoreApi } from '../game/game-context';
+import { squareToVector, vectorToSquare } from '@/lib/board-space';
 import { useBoardState } from './board-state';
 import { createPieceGeometries } from './piece-geometry';
 
 const MOVE_DURATION = 0.32;
 const CAPTURE_DURATION = 0.8;
-
-/** World position of a square's center on the board surface (white at +Z). */
-const squareToVector = (square: string, y = 0): Vector3 => {
-  const { file, rank } = squareCoords(square);
-  return new Vector3(file - 3.5, y, 3.5 - rank);
-};
-
-const vectorToSquare = (point: Vector3): string | null => {
-  const file = Math.floor(point.x + 4);
-  const rank = Math.floor(4 - point.z);
-  if (file < 0 || file > 7 || rank < 0 || rank > 7) return null;
-  return `${'abcdefgh'[file]}${rank + 1}`;
-};
 
 const toMaterial = (m: PieceMaterial) =>
   new MeshStandardMaterial({
@@ -59,9 +47,11 @@ interface DragState {
 export function ChessBoard3D({
   theme,
   interactive = true,
+  autoRotate = false,
 }: {
   theme: Theme;
   interactive?: boolean;
+  autoRotate?: boolean;
 }) {
   const store = useGameStoreApi();
   const outcome = useGame((s) => s.outcome);
@@ -153,11 +143,11 @@ export function ChessBoard3D({
         enableDamping
         dampingFactor={0.08}
         rotateSpeed={0.6}
-        minDistance={9}
-        maxDistance={30}
+        minDistance={5}
+        maxDistance={34}
         maxPolarAngle={1.4}
-        autoRotate={!interactive}
-        autoRotateSpeed={0.35}
+        autoRotate={!interactive || autoRotate}
+        autoRotateSpeed={interactive ? 0.5 : 0.35}
       />
 
       <group ref={boardGroup}>

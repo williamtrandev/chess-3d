@@ -9,7 +9,7 @@ export default [
   {
     // react-three-fiber mutates three.js objects (uniforms, positions) inside the frame
     // loop by design; the React Compiler immutability rule does not apply there.
-    files: ['src/components/{board,scene,scenery}/**/*.tsx'],
+    files: ['src/components/{board,characters,scene,scenery}/**/*.tsx'],
     rules: { 'react-hooks/immutability': 'off' },
   },
 ];

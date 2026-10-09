@@ -369,6 +369,8 @@ function Parasol() {
 }
 
 export const BEACH_SUN = new Vector3(-60, 80, -70);
+const GULL_RADIUS: [number, number] = [25, 70];
+const GULL_HEIGHT: [number, number] = [14, 30];
 
 /** Tropical island: sand dunes, animated sea with foam, palms, rocks and seagulls. */
 export function Beach({ quality }: { quality: 'high' | 'low' }) {
@@ -383,8 +385,8 @@ export function Beach({ quality }: { quality: 'high' | 'low' }) {
       <Flock
         count={9}
         color="#ffffff"
-        radius={[25, 70]}
-        height={[14, 30]}
+        radius={GULL_RADIUS}
+        height={GULL_HEIGHT}
         size={1.6}
         flapSpeed={6}
         seed={21}
