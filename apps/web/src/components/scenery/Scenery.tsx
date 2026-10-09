@@ -3,7 +3,7 @@
 import { Environment, Lightformer, Sky } from '@react-three/drei';
 import { Vector3 } from 'three';
 import type { SceneryId } from '@/lib/scenery';
-import type { Quality } from '@/lib/settings-store';
+import type { GraphicsProfile } from '@/lib/graphics';
 import type { Theme } from '@/lib/themes';
 import { BEACH_SUN, Beach } from './Beach';
 import { Field } from './Field';
@@ -12,6 +12,7 @@ import { Sakura } from './Sakura';
 import { Snow } from './Snow';
 
 type Outdoor = Exclude<SceneryId, 'studio'>;
+type Quality = GraphicsProfile['scenery'];
 
 interface Lighting {
   /** Direction of the sun (or moon) light. */
@@ -110,10 +111,12 @@ function Sun({
   direction,
   color,
   intensity,
+  shadowMapSize,
 }: {
   direction: Vector3;
   color: string;
   intensity: number;
+  shadowMapSize: number;
 }) {
   const position = direction.clone().normalize().multiplyScalar(30);
   return (
@@ -122,7 +125,7 @@ function Sun({
       position={position}
       color={color}
       intensity={intensity}
-      shadow-mapSize={[2048, 2048]}
+      shadow-mapSize={[shadowMapSize, shadowMapSize]}
       shadow-bias={-0.0004}
       shadow-normalBias={0.02}
       shadow-camera-left={-13}
@@ -163,13 +166,28 @@ function Landscape({ id, quality }: { id: Outdoor; quality: Quality }) {
 }
 
 /** The landscape around the board, with matching sky, light, fog and reflections. */
-export function Scenery({ id, quality, theme }: { id: SceneryId; quality: Quality; theme: Theme }) {
+export function Scenery({
+  id,
+  quality,
+  shadowMapSize,
+  theme,
+}: {
+  id: SceneryId;
+  quality: Quality;
+  shadowMapSize: number;
+  theme: Theme;
+}) {
   if (id === 'studio') {
     return (
       <>
         <color attach="background" args={[theme.background]} />
         <ambientLight intensity={0.35} />
-        <Sun direction={new Vector3(4, 10, 6)} color="#ffffff" intensity={1.8} />
+        <Sun
+          direction={new Vector3(4, 10, 6)}
+          color="#ffffff"
+          intensity={1.8}
+          shadowMapSize={shadowMapSize}
+        />
         <Environment resolution={256}>
           <Lightformer form="rect" intensity={2} position={[0, 6, -6]} scale={[12, 3, 1]} />
           <Lightformer
@@ -192,7 +210,12 @@ export function Scenery({ id, quality, theme }: { id: SceneryId; quality: Qualit
       <fog attach="fog" args={light.fog} />
       {light.sky3d && <Sky distance={4500} sunPosition={light.sun} {...light.sky3d} />}
       <hemisphereLight args={[light.sky, light.ground, light.hemisphere]} />
-      <Sun direction={light.sun} color={light.sunColor} intensity={light.sunIntensity} />
+      <Sun
+        direction={light.sun}
+        color={light.sunColor}
+        intensity={light.sunIntensity}
+        shadowMapSize={shadowMapSize}
+      />
       {/* Reflections on the pieces come from the same sky. */}
       <Environment resolution={128} frames={1}>
         {light.sky3d ? (

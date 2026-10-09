@@ -45,6 +45,15 @@ export const EyeIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+/** A window with its right-hand panel, for showing or hiding the side panel. */
+export const PanelIcon = ({ open, ...p }: SVGProps<SVGSVGElement> & { open?: boolean }) => (
+  <svg {...base(p)}>
+    <rect x="3" y="4" width="18" height="16" rx="3" />
+    <path d="M15 4v16" />
+    {open ? <path d="m8 10 2 2-2 2" /> : <path d="m10 10-2 2 2 2" />}
+  </svg>
+);
+
 export const SoundIcon = ({ muted, ...p }: SVGProps<SVGSVGElement> & { muted?: boolean }) => (
   <svg {...base(p)}>
     <path d="M11 5 6 9H2v6h4l5 4V5Z" />

@@ -18,8 +18,8 @@ const noop = () => () => {};
 export function SceneBackdrop() {
   const [store] = useState(() => createGameStore());
   const webgl = useSyncExternalStore(noop, supportsWebGL, () => false);
-  const { theme, scenery, quality } = useSettings(
-    useShallow((s) => ({ theme: s.theme, scenery: s.scenery, quality: s.quality })),
+  const { theme, scenery } = useSettings(
+    useShallow((s) => ({ theme: s.theme, scenery: s.scenery })),
   );
 
   return (
@@ -31,7 +31,6 @@ export function SceneBackdrop() {
             <GameCanvas
               theme={THEMES[theme]}
               scenery={scenery}
-              quality={quality}
               showBoard
               interactive={false}
               layout="home"

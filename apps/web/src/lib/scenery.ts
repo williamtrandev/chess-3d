@@ -20,6 +20,20 @@ export const TABLE_WOOD: Record<SceneryId, string> = {
   studio: '#3b2a1e',
 };
 
+/**
+ * How strongly the sky's reflections light the pieces. Bright, white-ground scenes wash
+ * light pieces out to flat white, so they get less.
+ */
+export const PIECE_REFLECTION: Record<SceneryId, number> = {
+  field: 0.85,
+  sunset: 0.9,
+  beach: 0.45,
+  snow: 0.45,
+  night: 1,
+  sakura: 0.75,
+  studio: 1,
+};
+
 export const SCENERY_LABEL: Record<SceneryId, string> = {
   field: 'Đồng quê',
   sunset: 'Hoàng hôn',

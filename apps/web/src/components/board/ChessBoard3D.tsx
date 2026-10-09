@@ -1,10 +1,12 @@
 'use client';
 
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Outlines } from '@react-three/drei';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
+  Euler,
   MeshStandardMaterial,
+  PlaneGeometry,
   Vector3,
   type BufferGeometry,
   type Group,
@@ -20,25 +22,34 @@ import {
 } from '@/lib/board';
 import type { Theme, PieceMaterial } from '@/lib/themes';
 import { useGame, useGameStoreApi } from '../game/game-context';
+import { bake, place } from '@/lib/bake';
 import { squareToVector, vectorToSquare } from '@/lib/board-space';
 import { useBoardState } from './board-state';
 import { createPieceGeometries } from './piece-geometry';
 
 const MOVE_DURATION = 0.32;
 const CAPTURE_DURATION = 0.8;
+/** Width of the contrasting silhouette around pieces, in drawing-buffer pixels. */
+const PIECE_OUTLINE = 2;
 
-const toMaterial = (m: PieceMaterial) =>
+const toMaterial = (m: PieceMaterial, reflection: number) =>
   new MeshStandardMaterial({
     color: m.color,
     roughness: m.roughness,
     metalness: m.metalness,
+    envMapIntensity: reflection,
     ...(m.emissive ? { emissive: m.emissive, emissiveIntensity: m.emissiveIntensity ?? 0 } : {}),
   });
 
 interface DragState {
   square: string;
   point: Vector3;
+  /** Screen position where the press started, to tell a click from a drag. */
+  screen: { x: number; y: number };
 }
+
+/** Pointer travel (CSS pixels) below which a press and release count as a click. */
+const CLICK_SLOP = 6;
 
 /**
  * The board, pieces and their interaction, to be placed inside a scene. When not
@@ -48,10 +59,13 @@ export function ChessBoard3D({
   theme,
   interactive = true,
   autoRotate = false,
+  reflection = 1,
 }: {
   theme: Theme;
   interactive?: boolean;
   autoRotate?: boolean;
+  /** Strength of environment reflections on the pieces (lower in bright scenes). */
+  reflection?: number;
 }) {
   const store = useGameStoreApi();
   const outcome = useGame((s) => s.outcome);
@@ -60,9 +74,30 @@ export function ChessBoard3D({
   const startFen = useGame((s) => s.startFen);
 
   const geometries = useMemo(() => createPieceGeometries(), []);
+  const squareGeometry = useMemo(() => {
+    const tile = new PlaneGeometry(1, 1);
+    const flat = new Euler(-Math.PI / 2, 0, 0);
+    const shade = (light: boolean) =>
+      bake(
+        SQUARES.filter((square) => isLightSquare(square) === light).map((square) => ({
+          geometry: tile,
+          matrix: place(squareToVector(square, 0), flat),
+        })),
+      );
+    const baked = { light: shade(true), dark: shade(false) };
+    tile.dispose();
+    return baked;
+  }, []);
+  useEffect(
+    () => () => Object.values(squareGeometry).forEach((g) => g.dispose()),
+    [squareGeometry],
+  );
   const materials = useMemo(
-    () => ({ white: toMaterial(theme.white), black: toMaterial(theme.black) }),
-    [theme],
+    () => ({
+      white: toMaterial(theme.white, reflection),
+      black: toMaterial(theme.black, reflection),
+    }),
+    [theme, reflection],
   );
   useEffect(() => {
     return () => Object.values(geometries).forEach((g) => g.dispose());
@@ -109,17 +144,26 @@ export function ChessBoard3D({
     if (!wasSelected.current) state.select(piece.square);
     const after = store.getState();
     if (after.selected === piece.square && after.canPlayerMove()) {
-      drag.current = { square: piece.square, point: squareToVector(piece.square) };
+      drag.current = {
+        square: piece.square,
+        point: squareToVector(piece.square),
+        screen: { x: event.nativeEvent.clientX, y: event.nativeEvent.clientY },
+      };
       setDragging(true);
     }
   };
 
-  const endDrag = (point: Vector3 | null) => {
+  const endDrag = (point: Vector3 | null, screen?: { x: number; y: number }) => {
     const current = drag.current;
     drag.current = null;
     setDragging(false);
     if (!current) return;
-    const target = point ? vectorToSquare(point) : null;
+    // A click on a tall piece hits the board plane on a square behind it: without this,
+    // clicking a king would try to move it there and drop the selection.
+    const clicked =
+      screen !== undefined &&
+      Math.hypot(screen.x - current.screen.x, screen.y - current.screen.y) < CLICK_SLOP;
+    const target = clicked ? current.square : point ? vectorToSquare(point) : null;
     const state = store.getState();
     if (target && target !== current.square) state.tryMove(current.square, target);
     else if (target === current.square && wasSelected.current) state.select(current.square);
@@ -156,29 +200,28 @@ export function ChessBoard3D({
           <meshStandardMaterial color={theme.frame} roughness={0.6} />
         </mesh>
 
-        {SQUARES.map((square) => {
-          const position = squareToVector(square, 0);
-          return (
-            <mesh
-              key={square}
-              position={position}
-              rotation-x={-Math.PI / 2}
-              receiveShadow
-              onPointerDown={(e) => {
-                if (!interactive) return;
-                e.stopPropagation();
-                store.getState().select(square);
-              }}
-            >
-              <planeGeometry args={[1, 1]} />
-              <meshStandardMaterial
-                color={isLightSquare(square) ? theme.lightSquare : theme.darkSquare}
-                roughness={theme.id === 'marble' ? 0.2 : 0.7}
-                metalness={theme.id === 'neon' ? 0.3 : 0}
-              />
-            </mesh>
-          );
-        })}
+        {/* Light and dark squares, each baked into one mesh; the square comes from the hit point. */}
+        {(['light', 'dark'] as const).map((shade) => (
+          <mesh
+            key={shade}
+            geometry={squareGeometry[shade]}
+            receiveShadow
+            onPointerDown={(e) => {
+              if (!interactive) return;
+              e.stopPropagation();
+              const square = vectorToSquare(
+                boardGroup.current?.worldToLocal(e.point.clone()) ?? e.point,
+              );
+              if (square) store.getState().select(square);
+            }}
+          >
+            <meshStandardMaterial
+              color={shade === 'light' ? theme.lightSquare : theme.darkSquare}
+              roughness={theme.id === 'marble' ? 0.2 : 0.7}
+              metalness={theme.id === 'neon' ? 0.3 : 0}
+            />
+          </mesh>
+        ))}
 
         <Highlights
           selected={selected}
@@ -197,6 +240,7 @@ export function ChessBoard3D({
               from={from}
               geometry={geometries[piece.type]}
               material={materials[piece.color]}
+              outline={theme.outline[piece.color]}
               lifted={piece.square === selected}
               drag={drag}
               interactive={interactive && (canMove || targets.has(piece.square))}
@@ -211,6 +255,7 @@ export function ChessBoard3D({
             piece={captured}
             geometry={geometries[captured.type]}
             material={materials[captured.color]}
+            outline={theme.outline[captured.color]}
           />
         )}
 
@@ -225,7 +270,7 @@ export function ChessBoard3D({
           onPointerUp={(e) => {
             if (!drag.current) return;
             e.stopPropagation();
-            endDrag(e.point);
+            endDrag(e.point, { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY });
           }}
         >
           <planeGeometry args={[40, 40]} />
@@ -269,6 +314,7 @@ interface PieceProps {
   from: string | undefined;
   geometry: BufferGeometry;
   material: Material;
+  outline: string;
   lifted: boolean;
   drag: RefObject<DragState | null>;
   interactive: boolean;
@@ -280,6 +326,7 @@ function Piece({
   from,
   geometry,
   material,
+  outline,
   lifted,
   drag,
   interactive,
@@ -321,7 +368,9 @@ function Piece({
       onPointerOver={() => setCursor('grab')}
       onPointerOut={() => setCursor('auto')}
     >
-      <mesh geometry={geometry} material={material} castShadow receiveShadow />
+      <mesh geometry={geometry} material={material} castShadow receiveShadow>
+        <Outlines thickness={PIECE_OUTLINE} color={outline} />
+      </mesh>
     </group>
   );
 }
@@ -331,10 +380,12 @@ function CapturedPiece({
   piece,
   geometry,
   material,
+  outline,
 }: {
   piece: BoardPiece;
   geometry: BufferGeometry;
   material: Material;
+  outline: string;
 }) {
   const ref = useRef<Group>(null);
   const elapsed = useRef(0);
@@ -358,7 +409,9 @@ function CapturedPiece({
 
   return (
     <group ref={ref} position={origin}>
-      <mesh geometry={geometry} material={material} castShadow />
+      <mesh geometry={geometry} material={material} castShadow>
+        <Outlines thickness={PIECE_OUTLINE} color={outline} />
+      </mesh>
     </group>
   );
 }
