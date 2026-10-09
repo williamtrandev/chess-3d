@@ -93,11 +93,15 @@ export function PlayersPanel({ thinking }: { thinking: boolean }) {
   };
 
   return (
-    <section className="glass p-4" aria-label="Người chơi">
+    // Phones: both players side by side, the status lives in the bottom toolbar instead.
+    <section
+      className="glass p-4 max-lg:grid max-lg:grid-cols-2 max-lg:gap-3 max-lg:p-3"
+      aria-label="Người chơi"
+    >
       {row(opposite(orientation))}
       <p
         aria-live="polite"
-        className={`my-3 rounded-2xl px-3 py-2 text-center text-sm font-medium transition-colors ${status.tone}`}
+        className={`my-3 rounded-2xl px-3 py-2 text-center text-sm font-medium transition-colors max-lg:hidden ${status.tone}`}
       >
         {status.text}
       </p>

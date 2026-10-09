@@ -15,13 +15,11 @@ import { Board2D } from '../board/Board2D';
 import { StaticBackdrop } from '../scene/StaticBackdrop';
 import { ArrowLeftIcon, CameraIcon, FlipIcon, MenuIcon, PanelIcon } from '../ui/icons';
 import { ActionBar } from './ActionBar';
+import { GameSettings } from './GameSettings';
 import { GameStoreContext, useGame, useGameStoreApi } from './game-context';
-import { MoveList } from './MoveList';
 import { PlayersPanel } from './PlayersPanel';
 import { PromotionDialog } from './PromotionDialog';
 import { ResultDialog } from './ResultDialog';
-import { SettingsPanel } from './SettingsPanel';
-import { ViewPicker } from './ViewPicker';
 import { useEngineOpponent } from './use-engine-opponent';
 import { useGameSounds } from './use-game-sounds';
 
@@ -232,10 +230,8 @@ function GameLayout() {
           />
         </div>
         <PlayersPanel thinking={thinking} />
-        <MoveList />
         <ActionBar />
-        <ViewPicker enabled={webgl} />
-        <SettingsPanel webgl={webgl} />
+        <GameSettings webgl={webgl} />
       </aside>
     </main>
   );
